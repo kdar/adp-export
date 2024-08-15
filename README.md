@@ -1,89 +1,53 @@
-# Usage
-1. To develop your own user script with Solidjs, you first need to clone the project.
+ADP Data Download
+=================
+
+This allows you to download your ADP Global MyView paystubs.
+
+## Features
+
+* Adds a button to bottom of paystub list to download them.
+* Uses the already existing checkboxes to select which paystubs to download.
+* Adds a "Select all" link to select all the paystubs for that year.
+
+## CSV header configuration
+
+This user script needs to know how to map specific JSON fields into CSV headers. We could just convert it to what the JSON keys are, but the issue with this is they aren't always intuitive and you may want to rename them, and it's actually useful to know when there is a new paystub line item (it will pop up an error when it finds a new JSON key that hasn't been configured).
+
+The configuration is in the format of: one column per line, and a \<key>=\<rename> format. For example, if we wanted to rename the paystub line item of "Net Pay - Amount to be paid" to "Net", we would do:
 ```
-gh repo clone Ferhatduran55/solidjs-userscript
-```
-2. Then download the requirements:
-using `bun`
-```
-bun install
-```
-3. After the download is completed, you can adjust the userscript object in `package.json` as you wish by using the [setup guide](https://github.com/va4ok/userscript-builder?tab=readme-ov-file#setup). You can adjust the user script's metadata using the child meta object, where some adjustments come by default and you don't need to type them.
-```json package.json
-{
-  "userscript": {
-    "entry": "./dist/index.js",
-    "dev": "./dist",
-    "release": "./release",
-    "fileName": "index",
-    "meta": {
-      "name": "new userscript",
-      "namespace": "http://tampermonkey.net/",
-      "version": "0.0.0",
-      "description": "new userscript",
-      "author": "You",
-      "match": [
-        "*://*.*"
-      ],
-      "grant": "GM_addStyle"
-    }
-  }
-}
+Net Pay - Amount to be paid=Net
 ```
 
-Note: `userscript.meta.grant = "GM_addStyle"` or `[... ,"GM_addStyle"]` Depending on the `grant` value in the `package.json`, `tailwindcss` styles are injected into the page using the [greasemonkey API](https://www.tampermonkey.net/documentation.php#api:GM_addStyle), so do not remove this part. If you are going to remove it, update the `injectCode` section in the `vite.config.js` file according to your own code.
-Style injection code:
-```javascript
-export default defineConfig({
-  ...
-  plugins: [
-    ...
-    cssInjectedByJsPlugin({
-      injectCode: (cssCode, options) => {
-        return `try{if(typeof document != 'undefined'){GM.addStyle(${cssCode});}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
-      },
-    }),
-    ...
-  ],
-  ...
-});
+If you use "-" as the column to convert to, it will ignore it. Example:
 ```
-4. After setting, we build the user script using the commands defined in `package.json` can use [command guide](https://github.com/va4ok/userscript-builder?tab=readme-ov-file#setup)
-```json
-{
-  ...
-  "scripts": {
-    "build": "vite build && userscript-builder --mode dev",
-    "release:bugfix": "vite build && userscript-builder --mode bugfix",
-    "release:minor": "vite build && userscript-builder --mode minor",
-    "release:major": "vite build && userscript-builder --mode major"
-  },
-  ...
-}
+Employer Contributions - ESPP Jun-Nov=-
 ```
 
-5.After it is build, user script will be created in the `dist` folder by default.
+There are 4 special columns, they are:
+* *date - The date the paystub is for.
+* *from - The from date which is the starting period of the paystub.
+* *to - The to date which is the ending period of the paystub.
+* *gross - The gross income.
+
+Below is an example configuration.
 ```
-bun run build
+*date=Date
+*from=FromDate
+*to=ToDate
+*gross=Gross
+Net Pay - Amount to be paid=Net
+Earnings - Salary Exempt=Earnings (Salary Exempt)
+Earnings - Corp Bonus=Earnings (Corp Bonus)
+EE Taxes - TX Withholding Tax Federal=Deduction (Federal Income Tax)
+EE Taxes - TX EE Social Security Tax Federal=Deduction (Social Security Tax)
+EE Taxes - TX EE Medicare Tax Federal=Deduction (Medicare Tax)
+Emp. Benefits Pre-tax ded. - *Std Medical EE pre-tax=Deduction (Medical Insurance pre-tax)
+Emp. Benefits Post-Tax ded. - ESPP  Ded=Deduction (ESPP)
+Emp. Benefits Pre-tax ded. - *401k EE pretax=Deduction (401k pre-tax)
+Emp. Benefits Post-Tax ded. - Stock Offset=Deduction (Stock Offset)
+Emp. Benefits Post-Tax ded. - Net Pay Off-Set=Deduction (Net Pay Offset)
+Emp. Benefits Post-Tax ded. - MIS-Tax=Deduction (MIS-Tax)
+Employer Contributions - ESPP Dec-May=-
+Employer Contributions - ESPP Jun-Nov=-
+Federal Wages - RE Withholding Tax Federal=-
 ```
-![image](https://github.com/Ferhatduran55/solidjs-userscript/assets/42141771/42c2c871-a7ce-471e-b86f-055d5cfe16ac)
-
-If it is release, user script will be created in the `release` folder by default.
-```
-bun run release:bugfix
-```
-![image](https://github.com/Ferhatduran55/solidjs-userscript/assets/42141771/ad20fb5e-1bc1-4246-985b-f215e4ab34f5)
-
-These names are userscript.entry, userscript.dev, userscript.release and userscript.fileName values comes from in `package.json`.
-
-`userscript.entry`: First of all, the Solidjs project is built with vite and this file is saved in the dist folder, this value is the name of the saved file and the user script is created using this file.
-
-`userscript.dev`: The location where the user script will be saved when it is built.
-
-`userscript.release`: The location where the user script will be saved when release.
-
-`userscript.fileName`: The new filename that the user script will receive when it is saved to its defined location, for example `[name].user.js`.
-
-There is a Countdown timer in the repository, you can use it to test.
-You can find the files by following the “index.jsx” code under src.
-you are free
