@@ -1,0 +1,1 @@
+// declare var GM_config: any;
