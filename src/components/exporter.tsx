@@ -71,10 +71,14 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: stri
   for (let payment of data.payments) {
     let row: any = {};
 
-    row[columnMap[mapping["*date"]]] = payment.date;
-    row[columnMap[mapping["*from"]]] = payment.from;
-    row[columnMap[mapping["*to"]]] = payment.to;
-    row[columnMap[mapping["*gross"]]] = payment.gross;
+    [["Date", payment.date], ["From", payment.from], ["To", payment.to], ["Gross", payment.gross]].forEach(([name, value]) => {
+      if (columnMap[mapping[name]] === undefined) {
+        missing[name] = true;
+        return;
+      }
+
+      row[columnMap[mapping[name]]] = value;
+    });
 
     payment.buckets.forEach((bucket: any) => {
       let bucketDescription = bucketDescriptionMap[bucket.id];
@@ -88,6 +92,7 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: stri
           missing[name] = true;
           return;
         }
+
         row[columnMap[mapping[name]]] = wagetype.amount;
       });
     });
@@ -132,16 +137,7 @@ const Exporter = (props: any) => {
   let [buttonText, setButtonText] = createSignal("Export");
   let [scope, setScope] = createSignal<any>({});
 
-  const exportData = async (type: string) => {
-    let selected = scope().getSelected();
-    let selectedMap: any = {};
-    selected.forEach((v: { id: string }) => {
-      selectedMap[v.id] = true;
-    });
-
-    let payData = await getJsonData(scope());
-    payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
-
+  const exportData = async (type: string, payData: any) => {
     let name = "paydata";
     if (payData.payments.length === 1) {
       name = `Payslip_${payData.payments[0].date}`;
@@ -172,6 +168,37 @@ const Exporter = (props: any) => {
         }
         break;
       }
+    }
+  };
+
+  const onClickExportData = async (type: string) => {
+    let selected = scope().getSelected();
+    let payData = await getJsonData(scope());
+    let selectedMap: any = {};
+    selected.forEach((v: { id: string }) => {
+      selectedMap[v.id] = true;
+    });
+    payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
+
+    switch (type) {
+      case "download_json_multiple": {
+        const storedPayments = payData.payments;
+        storedPayments.forEach((payments: any[]) => {
+          payData.payments = [payments];
+          exportData("download_json", payData);
+        });
+        break;
+      }
+      case "download_csv_multiple": {
+        const storedPayments = payData.payments;
+        storedPayments.forEach((payments: any[]) => {
+          payData.payments = [payments];
+          exportData("download_csv", payData);
+        });
+        break;
+      }
+      default:
+        exportData(type, payData);
     }
   };
 
@@ -226,7 +253,7 @@ const Exporter = (props: any) => {
                   missing().forEach((key) => {
                     m.push({
                       key: key,
-                      column: "",
+                      column: key,
                       enabled: true
                     });
                   });
@@ -247,25 +274,35 @@ const Exporter = (props: any) => {
 
       <div ref={exportButton} class="tw-dropdown tw-dropdown-top">
         <div tabIndex={0} role="button" class="tw-btn tw-btn-primary tw-mt-2 tw-normal-case">{buttonText()}</div>
-        <ul tabIndex={0} class="tw-dropdown-content tw-menu tw-bg-base-100 tw-rounded-box tw-z-[1] tw-w-52 tw-p-2 tw-shadow">
+        <ul tabIndex={0} class="tw-dropdown-content tw-menu tw-bg-base-100 tw-rounded-box tw-z-[1] tw-w-72 tw-p-2 tw-shadow">
           <li><a onClick={async (e) => {
             e.preventDefault();
-            await exportData("download_json");
+            await onClickExportData("download_json");
             (document.activeElement as HTMLElement)?.blur();
-          }}>Download JSON</a></li>
+          }}>Download JSON (combined)</a></li>
           <li><a onClick={async (e) => {
             e.preventDefault();
-            await exportData("download_csv");
+            await onClickExportData("download_json_multiple");
             (document.activeElement as HTMLElement)?.blur();
-          }}>Download CSV</a></li>
+          }}>Download JSON (multiple files)</a></li>
           <li><a onClick={async (e) => {
             e.preventDefault();
-            await exportData("copy_json");
+            await onClickExportData("download_csv");
+            (document.activeElement as HTMLElement)?.blur();
+          }}>Download CSV  (combined)</a></li>
+          <li><a onClick={async (e) => {
+            e.preventDefault();
+            await onClickExportData("download_csv_multiple");
+            (document.activeElement as HTMLElement)?.blur();
+          }}>Download CSV  (multiple files)</a></li>
+          <li><a onClick={async (e) => {
+            e.preventDefault();
+            await onClickExportData("copy_json");
             (document.activeElement as HTMLElement)?.blur();
           }}>Copy JSON</a></li>
           <li><a onClick={async (e) => {
             e.preventDefault();
-            await exportData("copy_csv");
+            await onClickExportData("copy_csv");
             (document.activeElement as HTMLElement)?.blur();
           }}>Copy CSV</a></li>
         </ul>

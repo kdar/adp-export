@@ -51,10 +51,12 @@
     "vite-plugin-solid": "^2.8.2"
   },
   "dependencies": {
-    "@solid-primitives/mouse": "^2.0.19",
-    "@solid-primitives/scroll": "^2.0.23",
-    "@solid-primitives/timer": "^1.3.9",
-    "@thisbeyond/solid-dnd": "^0.7.5",
-    "solid-js": "^1.8.11"
+    "@atlaskit/pragmatic-drag-and-drop": "^1.1.12",
+    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^1.4.0",
+    "@atlaskit/pragmatic-drag-and-drop-flourish": "^1.1.0",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.3",
+    "lucide-solid": "^0.395.0",
+    "solid-js": "^1.8.11",
+    "tiny-invariant": "^1.3.3"
   }
 }

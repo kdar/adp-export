@@ -9,24 +9,6 @@ import Exporter from '@/components/exporter';
 import Panel from '@/components/panel';
 import { waitFor } from '@/utils/wait';
 
-const defaultMapping = [{
-  key: "*date",
-  column: "Date",
-  enabled: true
-}, {
-  key: "*from",
-  column: "FromDate",
-  enabled: true
-}, {
-  key: "*to",
-  column: "ToDate",
-  enabled: true
-}, {
-  key: "*gross",
-  column: "Gross",
-  enabled: true
-}];
-
 const root = document.body;
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
@@ -60,8 +42,8 @@ function createGMStore<T extends object>(
 
   let [settingsModal, setSettingsModal] = createSignal<HTMLDialogElement | null>(null);
   const [store, setStore] = createGMStore('adp-export', {
-    tmpMapping: defaultMapping,
-    mapping: defaultMapping
+    tmpMapping: [],
+    mapping: []
   });
 
   const mountExporter = async () => {
