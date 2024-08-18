@@ -1,6 +1,6 @@
 {
   "name": "adp-export",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "type": "module",
   "scripts": {
@@ -22,7 +22,7 @@
     "meta": {
       "name": "ADP export",
       "namespace": "kdar",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "description": "Exports ADP paystub data in JSON and CSV",
       "author": "Kevin Darlington",
       "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWhhcmQtZHJpdmUtZG93bmxvYWQiPjxwYXRoIGQ9Ik0xMiAydjgiLz48cGF0aCBkPSJtMTYgNi00IDQtNC00Ii8+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHg9IjIiIHk9IjE0IiByeD0iMiIvPjxwYXRoIGQ9Ik02IDE4aC4wMSIvPjxwYXRoIGQ9Ik0xMCAxOGguMDEiLz48L3N2Zz4=",
