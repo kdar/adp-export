@@ -41,12 +41,13 @@ function downloadTextAsCSV(text: string, exportName: string) {
   downloadAs(text, "text/csv;charset=utf-8", exportName + ".csv");
 }
 
-function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: string[] } {
+function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string[], missing: string[] } {
   let columns: Array<string> = [];
   let columnMap: any = {};
   let mapping: any = {};
   let ignored: any = {};
   let missing: any = {};
+  let found: any = {};
 
   mappingCfg.forEach((v: any) => {
     if (!v.enabled) {
@@ -78,6 +79,7 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: stri
       }
 
       row[columnMap[mapping[name]]] = value;
+      found[name] = true;
     });
 
     payment.buckets.forEach((bucket: any) => {
@@ -94,6 +96,7 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: stri
         }
 
         row[columnMap[mapping[name]]] = wagetype.amount;
+        found[name] = true;
       });
     });
 
@@ -111,6 +114,7 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], missing: stri
 
   return {
     csv: csvData,
+    found: Object.keys(found),
     missing: Object.keys(missing)
   };
 }
@@ -157,6 +161,10 @@ const Exporter = (props: any) => {
       case "download_csv": {
         let { csv, missing } = jsonToCsv(payData, props.store.mapping);
         downloadTextAsCSV(csv.join("\n"), name);
+        if (missing.length > 0) {
+          setMissing(missing);
+          missingModal.showModal();
+        }
         break;
       }
       case "copy_csv": {
