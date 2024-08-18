@@ -5,8 +5,8 @@ name: CI/CD Workflow
 
 on:
   push:
-    branches:
-      - main
+    tags:        
+      - 'v*.*.*'
   workflow_dispatch:
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -35,10 +35,6 @@ jobs:
         cache: 'pnpm'
     - name: Install dependencies
       run: pnpm install
-    - name: Run semantice release
-      run: |
-        pnpm dlx semantic-release
-      working-directory: ${{ github.workspace }}
     - name: Build
       run: pnpm run build --if-present
     - name: Release
