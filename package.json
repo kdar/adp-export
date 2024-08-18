@@ -1,6 +1,6 @@
 {
   "name": "adp-export",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "",
   "type": "module",
   "scripts": {
@@ -34,7 +34,8 @@
         "GM_getValue",
         "GM_setValue",
         "GM_registerMenuCommand"
-      ]
+      ],
+      "run-at": "document-idle"
     }
   },
   "devDependencies": {
