@@ -1,5 +1,5 @@
-ADP Data Download
-=================
+ADP Export
+==========
 
 This allows you to download your ADP Global MyView paystubs.
 
