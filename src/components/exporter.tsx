@@ -1,6 +1,27 @@
-import { Index, createSignal, onMount } from "solid-js";
+import { Index, Show, batch, createEffect, createSignal, on, onMount, untrack } from "solid-js";
+// import { saveAs } from 'file-saver';
 
 declare var angular: any;
+
+export const exportOptions = [
+  "Download CSV (separate)",
+  "Download CSV (combined)",
+  "Download JSON (separate)",
+  "Download JSON (combined)",
+  "Download PDF (separate)",
+  "Download PDF (combined)",
+  "Copy JSON",
+  "Copy CSV",
+  "Copy CSV (no header)",
+];
+
+export const defaultExportMenu = exportOptions.map((v) => {
+  return {
+    "title": v,
+    "execute": [v],
+    "enabled": true
+  }
+});
 
 const copyToClipboard = (text: string) => {
   if (navigator.clipboard) {
@@ -23,22 +44,36 @@ function filledArray(value: number, len: number): any[] {
   return arr;
 }
 
-function downloadAs(data: any, contentType: string, exportName: string) {
-  let dataStr = `data:${contentType},` + encodeURIComponent(data);
+// function downloadDataAs(data: any, contentType: string, exportName: string) {
+//   let dataStr = `data:${contentType},` + encodeURIComponent(data);
+//   let downloadAnchorNode = document.createElement('a');
+//   downloadAnchorNode.setAttribute("href", dataStr);
+//   downloadAnchorNode.setAttribute("download", exportName);
+//   document.body.appendChild(downloadAnchorNode); // required for firefox
+//   downloadAnchorNode.click();
+//   downloadAnchorNode.remove();
+// }
+
+// function downloadAs(url: string, contentType: string, exportName: string) {
+//   let downloadAnchorNode = document.createElement('a');
+//   downloadAnchorNode.setAttribute("href", url);
+//   downloadAnchorNode.setAttribute("download", exportName);
+//   document.body.appendChild(downloadAnchorNode); // required for firefox
+//   downloadAnchorNode.click();
+//   downloadAnchorNode.remove();
+// }
+
+function saveAs(data: Blob | string, exportName: string) {
   let downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
+  if (typeof data === "string") {
+    downloadAnchorNode.setAttribute("href", data);
+  } else {
+    downloadAnchorNode.setAttribute("href", window.URL.createObjectURL(data));
+  }
   downloadAnchorNode.setAttribute("download", exportName);
   document.body.appendChild(downloadAnchorNode); // required for firefox
   downloadAnchorNode.click();
   downloadAnchorNode.remove();
-}
-
-function downloadObjectAsJson(exportObj: any, exportName: string) {
-  downloadAs(JSON.stringify(exportObj, null, 2), "text/json;charset=utf-8", exportName + ".json");
-}
-
-function downloadTextAsCSV(text: string, exportName: string) {
-  downloadAs(text, "text/csv;charset=utf-8", exportName + ".csv");
 }
 
 function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string[], missing: string[] } {
@@ -135,11 +170,14 @@ async function getJsonData(scope: any) {
   return JSON.parse(angular.toJson(j));
 }
 
-const Exporter = (props: any) => {
+export const Exporter = (props: { store: any, setStore: any, settingsModal: any }) => {
   let missingModal: any;
   let [missing, setMissing] = createSignal<string[]>([]);
   let [buttonText, setButtonText] = createSignal("Export");
   let [scope, setScope] = createSignal<any>({});
+  const [downloadCount, setDownloadCount] = createSignal(0);
+  const [downloadedCount, setDownloadedCount] = createSignal(0);
+  let downloadQueue: Function[] = [];
 
   const exportData = async (type: string, payData: any) => {
     let name = "paydata";
@@ -150,63 +188,121 @@ const Exporter = (props: any) => {
     }
 
     switch (type) {
-      case "download_json": {
-        downloadObjectAsJson(payData, name);
+      case "Download JSON (combined)": {
+        downloadQueue.push(async () => {
+          // console.log("Download " + name + ".json");          
+          saveAs(new Blob([JSON.stringify(payData, null, 2)], {
+            type: 'text/json;charset=utf-8'
+          }), name + ".json");
+          setDownloadedCount(downloadedCount() + 1);
+        });
+        setDownloadCount(downloadCount() + 1);
+
         break;
       }
-      case "copy_json": {
+      case "Copy JSON": {
         copyToClipboard(JSON.stringify(payData, null, 2));
         break;
       }
-      case "download_csv": {
-        let { csv, missing } = jsonToCsv(payData, props.store.mapping);
-        downloadTextAsCSV(csv.join("\n"), name);
-        if (missing.length > 0) {
-          setMissing(missing);
-          missingModal.showModal();
-        }
+      case "Download CSV (combined)": {
+        let { csv } = jsonToCsv(payData, props.store.settings.mapping);
+        downloadQueue.push(async () => {
+          // console.log("Download " + name + ".csv");
+          saveAs(new Blob([csv.join("\n")], {
+            type: 'text/csv;charset=utf-8'
+          }), name + ".csv");
+          setDownloadedCount(downloadedCount() + 1);
+        });
+        setDownloadCount(downloadCount() + 1);
+
         break;
       }
-      case "copy_csv": {
-        let { csv, missing } = jsonToCsv(payData, props.store.mapping);
+      case "Copy CSV": {
+        let { csv } = jsonToCsv(payData, props.store.settings.mapping);
         copyToClipboard(csv.join("\n"));
-        if (missing.length > 0) {
-          setMissing(missing);
-          missingModal.showModal();
-        }
+        break;
+      }
+      case "Copy CSV (no header)": {
+        let { csv } = jsonToCsv(payData, props.store.settings.mapping);
+        csv = csv.splice(1);
+        copyToClipboard(csv.join("\n"));
+        break;
+      }
+      case "Download PDF (combined)": {
+        downloadQueue.push(async () => {
+          // console.log("Download " + name + ".zip");
+          let resp = await fetch(scope().getMultiplePayslipsLink(), {
+            method: 'GET'
+          });
+          let blob = await resp.blob();
+          saveAs(blob, name + ".zip");
+          setDownloadedCount(downloadedCount() + 1);
+        });
+        setDownloadCount(downloadCount() + 1);
+
+        break;
+      }
+      case "download_pdf": {
+        let generatePDFURL!: Function;
+        scope().$parent.$$watchers.forEach((watcher: any) => {
+          if (watcher.exp === "selected_payment") {
+            if (watcher.fn.toString().indexOf("function(newValue, oldValue, scope)") !== -1) {
+              generatePDFURL = watcher.fn;
+            }
+          }
+        });
+
+        let fakeScope = {
+          buckets: [], // scope().buckets,
+          selected_payment: {
+            buckets: []
+          },
+          payslipUrl: ""
+        };
+        generatePDFURL(payData.payments[0], {}, fakeScope);
+        downloadQueue.push(async () => {
+          // console.log("Download " + name + ".pdf");
+          saveAs(fakeScope.payslipUrl, name + ".pdf");
+          setDownloadedCount(downloadedCount() + 1);
+        });
+        setDownloadCount(downloadCount() + 1);
+
         break;
       }
     }
   };
 
-  const onClickExportData = async (type: string) => {
-    let selected = scope().getSelected();
-    let payData = await getJsonData(scope());
-    let selectedMap: any = {};
-    selected.forEach((v: { id: string }) => {
-      selectedMap[v.id] = true;
-    });
-    payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
-
+  const onClickExportData = async (payData: any, type: string) => {
     switch (type) {
-      case "download_json_multiple": {
-        const storedPayments = payData.payments;
-        storedPayments.forEach((payments: any[]) => {
-          payData.payments = [payments];
-          exportData("download_json", payData);
+      case "Download JSON (separate)": {
+        payData.payments.forEach(async (payments: any[]) => {
+          await exportData("Download JSON (combined)", {
+            ...payData,
+            payments: [payments]
+          });
         });
         break;
       }
-      case "download_csv_multiple": {
-        const storedPayments = payData.payments;
-        storedPayments.forEach((payments: any[]) => {
-          payData.payments = [payments];
-          exportData("download_csv", payData);
+      case "Download CSV (separate)": {
+        payData.payments.forEach(async (payments: any[]) => {
+          await exportData("Download CSV (combined)", {
+            ...payData,
+            payments: [payments]
+          });
+        });
+        break;
+      }
+      case "Download PDF (separate)": {
+        payData.payments.forEach(async (payments: any[]) => {
+          await exportData("download_pdf", {
+            ...payData,
+            payments: [payments]
+          });
         });
         break;
       }
       default:
-        exportData(type, payData);
+        await exportData(type, payData);
     }
   };
 
@@ -223,14 +319,45 @@ const Exporter = (props: any) => {
     });
   });
 
+  createEffect(on(downloadCount, (count) => {
+    if (count === 0) { return; }
+
+    // This avoids the limit of chrome and maybe other browsers, that you can only download
+    // 10 things within a second otherwise it cancels all subsequent downloads.
+    const processQueue = () => {
+      let fn = downloadQueue.pop();
+      if (fn) {
+        fn();
+        setTimeout(processQueue, 200);
+      } else {
+        setDownloadCount(0);
+        setDownloadedCount(0);
+      }
+    };
+
+    setTimeout(processQueue, 1);
+  }, { defer: true }));
+
   let exportButton!: HTMLDivElement;
   return (
     <div>
+      {/* <div class={`tw-w-full tw-h-full tw-fixed tw-top-0 tw-left-0 tw-bg-black tw-opacity-90 tw-z-50`}>
+        <div class="tw-flex tw-justify-center tw-items-center tw-mt-[40vh] tw-text-center tw-p-5">
+          Solving... This could take some time and freeze.
+          <span class="loading loading-spinner text-primary ml-2"></span>
+        </div>
+      </div> */}
+
       <dialog class="tw-modal" ref={missingModal}>
         <div class="tw-modal-box">
           <h3 class="tw-font-bold tw-text-lg">Missing mappings</h3>
-          <p class="tw-py-4">There are new fields in the paystub that are missing mappings. Do you want to import the below mappings into your config?</p>
-
+          <p class="tw-py-4">
+            There are new fields in the paystub that are missing mappings.
+            Do you want to import the below mappings into your config?
+          </p>
+          <p class="tw-pb-4">
+            To get past this dialog, please add these new mappings. You can uncheck them if you want to ignore them in the settings.
+          </p>
           <div class="tw-max-h-72 tw-overflow-x-auto">
             <table class="tw-table tw-table-xs tw-table-pin-rows tw-table-pin-cols tw-mt-1">
               <thead>
@@ -256,7 +383,7 @@ const Exporter = (props: any) => {
             <form method="dialog">
               <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-center tw-gap-2" role="group">
                 <button class="tw-btn" onClick={(e) => {
-                  let m = [...props.store.tmpMapping];
+                  let m = [...props.store.tmpSettings.mapping];
 
                   missing().forEach((key) => {
                     m.push({
@@ -267,7 +394,7 @@ const Exporter = (props: any) => {
                   });
 
                   props.setStore(
-                    "tmpMapping",
+                    "tmpSettings", "mapping",
                     m,
                   );
 
@@ -281,42 +408,64 @@ const Exporter = (props: any) => {
       </dialog>
 
       <div ref={exportButton} class="tw-dropdown tw-dropdown-top">
-        <div tabIndex={0} role="button" class="tw-btn tw-btn-primary tw-mt-2 tw-normal-case">{buttonText()}</div>
+        <div
+          tabIndex={0}
+          role="button"
+          class="tw-btn tw-btn-primary tw-mt-2 tw-normal-case tw-relative tw-overflow-hidden tw-border-0"
+          classList={{
+            "tw-btn-disabled": downloadCount() > 0
+          }}
+        >
+          <Show when={downloadCount() > 0}>
+            <div
+              class="tw-absolute tw-h-full tw-top-0 tw-left-0 tw-transition-all tw-bg-primary tw-opacity-50"
+              style={{
+                "width": `${(downloadedCount() / downloadCount()) * 100.0}%`
+              }}
+            ></div>
+          </Show>
+          <span class="tw-z-10">{buttonText()}</span>
+        </div>
         <ul tabIndex={0} class="tw-dropdown-content tw-menu tw-bg-base-100 tw-rounded-box tw-z-[1] tw-w-72 tw-p-2 tw-shadow">
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("download_json");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Download JSON (combined)</a></li>
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("download_json_multiple");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Download JSON (multiple files)</a></li>
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("download_csv");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Download CSV  (combined)</a></li>
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("download_csv_multiple");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Download CSV  (multiple files)</a></li>
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("copy_json");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Copy JSON</a></li>
-          <li><a onClick={async (e) => {
-            e.preventDefault();
-            await onClickExportData("copy_csv");
-            (document.activeElement as HTMLElement)?.blur();
-          }}>Copy CSV</a></li>
+          <Index each={props.store.settings.exportMenu}>{(entry, i) =>
+            <li><a onClick={async (e) => {
+              e.preventDefault();
+
+              let payData = await getJsonData(scope());
+
+              // Check to see if we are going to do anything with CSV and if we are, check to
+              // see if we have any missing mappings. We will use all the available paystubs
+              // just so we find everything.
+              for (let x of entry().execute) {
+                if (x.match(/csv/i)) {
+                  let { missing } = jsonToCsv(payData, props.store.settings.mapping);
+                  if (missing.length > 0) {
+                    setMissing(missing);
+                    missingModal.showModal();
+                    return;
+                  }
+                  break;
+                }
+              }
+
+              // Only set the payments to what is selected.
+              let selected = scope().getSelected();
+              let selectedMap: any = {};
+              selected.forEach((v: { id: string }) => {
+                selectedMap[v.id] = true;
+              });
+              payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
+
+              batch(() => {
+                entry().execute.forEach(async (v: string) => {
+                  await onClickExportData({ ...payData }, v);
+                });
+              });
+              (document.activeElement as HTMLElement)?.blur();
+            }}>{entry().title}</a></li>
+          }</Index>
         </ul>
       </div>
     </div>
   );
 };
-
-export default Exporter;
