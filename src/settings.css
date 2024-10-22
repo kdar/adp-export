@@ -1,0 +1,18 @@
+
+.solid-select-control {
+  @apply tw-input-sm;
+  @apply tw-input-bordered;
+  height: inherit;
+  line-height: inherit;
+  border-radius: var(--rounded-btn, .5rem)!important;
+  border-width: 1px!important;
+  align-items: center;
+}
+
+.solid-select-container * {
+  line-height: inherit;
+}
+
+.solid-select-multi-value {
+  @apply tw-text-sm;
+}

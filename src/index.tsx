@@ -5,10 +5,11 @@ import { createStore, Store, SetStoreFunction } from 'solid-js/store';
 
 import '@/index.css';
 import Settings from '@/settings';
-import Exporter from '@/components/exporter';
+import { Exporter, defaultExportMenu } from '@/components/exporter';
 import Panel from '@/components/panel';
 import { waitFor } from '@/utils/wait';
 
+const latestStateVersion = 2;
 const root = document.body;
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
@@ -17,14 +18,63 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
+function upgradeState(storageKey: string, state: any): any {
+  let version = state.version || 1;
+  for (let x = version; x < latestStateVersion; x++) {
+    switch (x) {
+      // Upgrade from version 1 to 2.
+      case 1: {
+        GM_setValue(`${storageKey}.v1`, JSON.stringify(state));
+        let newState = {
+          version: 2,
+          tmpSettings: {
+            mapping: state.tmpMapping || [],
+            exportMenu: [...defaultExportMenu],
+          },
+          settings: {
+            mapping: state.mapping || [],
+            exportMenu: [...defaultExportMenu]
+          },
+        };
+        state = newState;
+        break;
+      }
+    }
+  }
+
+  if (state.tmpSettings.exportMenu?.length === 0) {
+    state.tmpSettings.exportMenu = [...defaultExportMenu];
+  }
+
+  return state;
+}
+
+const isObject = (item: any) => item?.constructor === Object;
+
+function merge(target: any, source: any) {
+  Object.keys(source).forEach(key => {
+    const targetValue = target[key];
+    const sourceValue = source[key];
+    if ((!isObject(targetValue) && targetValue !== undefined) && sourceValue) {
+      const newValues = merge(targetValue, sourceValue);
+      Object.assign(sourceValue, newValues);
+    }
+  });
+
+  Object.assign(target || {}, source);
+  return target;
+}
+
 function createGMStore<T extends object>(
-  key: string, initState: T
+  key: string, emptyState: T, initState: T
 ): [Store<T>, SetStoreFunction<T>] {
-  const [state, setState] = createStore<T>(initState);
+  const [state, setState] = createStore<T>(emptyState);
 
   if (GM_getValue(key)) {
     try {
-      setState(JSON.parse(GM_getValue(key)));
+      let saved = JSON.parse(GM_getValue(key));
+      saved = upgradeState(key, saved);
+      setState(merge({ ...initState }, saved));
     } catch (error) {
       setState(initState);
     }
@@ -41,9 +91,16 @@ function createGMStore<T extends object>(
   'use strict';
 
   let [settingsModal, setSettingsModal] = createSignal<HTMLDialogElement | null>(null);
-  const [store, setStore] = createGMStore('adp-export', {
-    tmpMapping: [],
-    mapping: []
+  const [store, setStore] = createGMStore('adp-export', {}, {
+    version: latestStateVersion,
+    tmpSettings: {
+      mapping: [],
+      exportMenu: [...defaultExportMenu]
+    },
+    settings: {
+      mapping: [],
+      exportMenu: [...defaultExportMenu]
+    },
   });
 
   const mountExporter = async () => {
