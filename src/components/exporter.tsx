@@ -106,6 +106,7 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
   let results: Record<number, any>[] = [];
   for (let payment of data.payments) {
     let row: any = {};
+    let otherStock: number = 0;
 
     [["Date", payment.date], ["From", payment.from], ["To", payment.to], ["Gross", payment.gross]].forEach(([name, value]) => {
       if (columnMap[mapping[name]] === undefined) {
@@ -120,6 +121,12 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
     payment.buckets.forEach((bucket: any) => {
       let bucketDescription = bucketDescriptionMap[bucket.id];
       bucket.wagetypes.forEach((wagetype: any) => {
+        if (wagetype.label === "Stock Offset") {
+          otherStock -= wagetype.amount;
+        } else if (wagetype.label === "RSU") {
+          otherStock -= wagetype.amount;
+        }
+
         const name = bucketDescription.label + " - " + wagetype.label;
         if (ignored[name]) {
           return;
@@ -134,6 +141,16 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
         found[name] = true;
       });
     });
+
+    const name = "Earnings - Stock Other";
+    if (otherStock > 0 && !ignored[name]) {
+      if (columnMap[mapping[name]] === undefined) {
+        missing[name] = true;
+      } else {
+        row[columnMap[mapping[name]]] = otherStock;
+        found[name] = true;
+      }
+    }
 
     results.push(row);
   }
