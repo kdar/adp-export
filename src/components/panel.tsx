@@ -2,7 +2,7 @@ import { createSignal, onMount } from "solid-js";
 
 declare var angular: any;
 
-const Panel = (props: any) => {
+const Panel = (props: { year: number }) => {
   let [state, setState] = createSignal(0);
   let [scope, setScope] = createSignal<any>({});
 
@@ -27,7 +27,9 @@ const Panel = (props: any) => {
         }
 
         for (let x = 0; x < scope().payStatements.length; x++) {
-          scope().payStatements[x].selected = selected;
+          if (scope().payStatements[x].date.getFullYear() == props.year) {
+            scope().payStatements[x].selected = selected;
+          }
         }
 
         return false;
