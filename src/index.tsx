@@ -7,7 +7,7 @@ import '@/index.css';
 import Settings from '@/settings';
 import { Exporter, defaultExportMenu } from '@/components/exporter';
 import Panel from '@/components/panel';
-import { waitFor } from '@/utils/wait';
+import { waitForMultiple, waitForSingle } from '@/utils/wait';
 
 const latestStateVersion = 2;
 const root = document.body;
@@ -106,7 +106,7 @@ function createGMStore<T extends object>(
   const mountExporter = async () => {
     if (!/.*\/pay.*/.test(location.hash)) { return; }
 
-    let [payHistoryEl]: HTMLElement[] = await waitFor('#pay_history');
+    let [payHistoryEl]: HTMLElement[] = await waitForSingle('#pay_history');
     if (payHistoryEl?.dataset.adpExportLoaded !== "true") {
       payHistoryEl.dataset.adpExportLoaded = "true";
 
@@ -114,10 +114,10 @@ function createGMStore<T extends object>(
         return <Exporter store={store} setStore={setStore} settingsModal={settingsModal}></Exporter>
       }, payHistoryEl);
 
-      let yearPanels = await waitFor('.panel-heading.pay-year-head .panel-title');
+      let yearPanels = await waitForMultiple('.panel-heading.pay-year-head .panel-title');
       yearPanels.forEach((panelEl: HTMLElement) => {
         render(() => {
-          return <Panel></Panel>;
+          return <Panel year={parseInt(panelEl.innerText)}></Panel>;
         }, panelEl);
       });
     }
