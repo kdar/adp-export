@@ -3,6 +3,14 @@ import { Index, Show, batch, createEffect, createSignal, on, onMount, untrack } 
 
 declare var angular: any;
 
+var cachedOverview: any | null = null;
+
+declare global {
+  interface Window {
+    getAppShell: Function,
+  }
+}
+
 export const exportOptions = [
   "Download CSV (separate)",
   "Download CSV (combined)",
@@ -171,10 +179,15 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
   };
 }
 
-async function getJsonData(scope: any) {
+async function getJsonData() {
+  if (cachedOverview === null) {
+    let n = await window.getAppShell().getHttpClient();
+    cachedOverview = await n.get("/gvservice/xxxxxxxx/ess/pay/overview");
+  }
+
   const j = {
-    "buckets": scope.buckets,
-    "payments": scope.payStatements.map((v: any) => {
+    "buckets": cachedOverview.data.buckets,
+    "payments": cachedOverview.data.payStatements.map((v: any) => {
       if (v.date.toISOString) {
         let parts = v.date.toISOString().split("T");
         v.date = parts[0];
@@ -448,7 +461,7 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
             <li><a onClick={async (e) => {
               e.preventDefault();
 
-              let payData = await getJsonData(scope());
+              let payData = await getJsonData();
 
               // Check to see if we are going to do anything with CSV and if we are, check to
               // see if we have any missing mappings. We will use all the available paystubs
