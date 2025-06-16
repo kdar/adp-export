@@ -2,12 +2,12 @@
 import { render } from 'solid-js/web';
 import { createSignal, onMount, createEffect } from 'solid-js';
 import { createStore, Store, SetStoreFunction } from 'solid-js/store';
-
-import '@/index.css';
-import Settings from '@/settings';
 import { Exporter, defaultExportMenu } from '@/components/exporter';
-import Panel from '@/components/panel';
 import { waitForMultiple, waitForSingle } from '@/utils/wait';
+import { GM_getValue, GM_setValue, GM_registerMenuCommand, GM_info, unsafeWindow, monkeyWindow } from '$';
+
+import Main from '@/App';
+import '@/index.css';
 
 const latestStateVersion = 2;
 const root = document.body;
@@ -87,6 +87,7 @@ function createGMStore<T extends object>(
   return [state, setState];
 }
 
+
 (async () => {
   'use strict';
 
@@ -103,39 +104,39 @@ function createGMStore<T extends object>(
     },
   });
 
-  const mountExporter = async () => {
-    if (!/.*\/pay.*/.test(location.hash)) { return; }
+  // const mountExporter = async () => {
+  //   if (!/.*\/pay.*/.test(location.hash)) { return; }
 
-    let [payHistoryEl]: HTMLElement[] = await waitForSingle('#pay_history');
-    if (payHistoryEl?.dataset.adpExportLoaded !== "true") {
-      payHistoryEl.dataset.adpExportLoaded = "true";
+  //   let [payHistoryEl]: HTMLElement[] = await waitForSingle('#pay_history');
+  //   if (payHistoryEl?.dataset.adpExportLoaded !== "true") {
+  //     payHistoryEl.dataset.adpExportLoaded = "true";
 
-      render(() => {
-        return <Exporter store={store} setStore={setStore} settingsModal={settingsModal}></Exporter>
-      }, payHistoryEl);
+  //     render(() => {
+  //       return <Exporter store={store} setStore={setStore} settingsModal={settingsModal}></Exporter>
+  //     }, payHistoryEl);
 
-      let yearPanels = await waitForMultiple('.panel-heading.pay-year-head .panel-title');
-      yearPanels.forEach((panelEl: HTMLElement) => {
-        render(() => {
-          return <Panel year={parseInt(panelEl.innerText)}></Panel>;
-        }, panelEl);
-      });
-    }
-  };
+  //     let yearPanels = await waitForMultiple('.panel-heading.pay-year-head .panel-title');
+  //     yearPanels.forEach((panelEl: HTMLElement) => {
+  //       render(() => {
+  //         return <Panel year={parseInt(panelEl.innerText)}></Panel>;
+  //       }, panelEl);
+  //     });
+  //   }
+  // };
 
-  setTimeout(() => {
-    mountExporter();
-    addEventListener("hashchange", mountExporter);
-  }, 0);
+  // setTimeout(() => {
+  //   mountExporter();
+  //   addEventListener("hashchange", mountExporter);
+  // }, 0);
 
   render(() => {
     onMount(() => {
-      GM_registerMenuCommand(`${GM_info.script.name} Settings`, async () => {
+      GM_registerMenuCommand(`${GM_info.script.name} Open`, async () => {
         // console.log(await GM.getValue("adpPaystubDownloadConfig"));
         settingsModal()?.showModal();
       });
     });
 
-    return <Settings settingsModalRef={setSettingsModal} store={store} setStore={setStore} />;
+    return <Main settingsModalRef={setSettingsModal} store={store} setStore={setStore} />;
   }, root);
 })();

@@ -371,25 +371,25 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
   let exportButton!: HTMLDivElement;
   return (
     <div>
-      {/* <div class={`tw-w-full tw-h-full tw-fixed tw-top-0 tw-left-0 tw-bg-black tw-opacity-90 tw-z-50`}>
-        <div class="tw-flex tw-justify-center tw-items-center tw-mt-[40vh] tw-text-center tw-p-5">
+      {/* <div class={`tw:w-full tw:h-full tw:fixed tw:top-0 tw:left-0 tw:bg-black tw:opacity-90 tw:z-50`}>
+        <div class="tw:flex tw:justify-center tw:items-center tw:mt-[40vh] tw:text-center tw:p-5">
           Solving... This could take some time and freeze.
           <span class="loading loading-spinner text-primary ml-2"></span>
         </div>
       </div> */}
 
-      <dialog class="tw-modal" ref={missingModal}>
-        <div class="tw-modal-box">
-          <h3 class="tw-font-bold tw-text-lg">Missing mappings</h3>
-          <p class="tw-py-4">
+      <dialog class="tw:modal" ref={missingModal}>
+        <div class="tw:modal-box">
+          <h3 class="tw:font-bold tw:text-lg">Missing mappings</h3>
+          <p class="tw:py-4">
             There are new fields in the paystub that are missing mappings.
             Do you want to import the below mappings into your config?
           </p>
-          <p class="tw-pb-4">
+          <p class="tw:pb-4">
             To get past this dialog, please add these new mappings. You can uncheck them if you want to ignore them in the settings.
           </p>
-          <div class="tw-max-h-72 tw-overflow-x-auto">
-            <table class="tw-table tw-table-xs tw-table-pin-rows tw-table-pin-cols tw-mt-1">
+          <div class="tw:max-h-72 tw:overflow-x-auto">
+            <table class="tw:table tw:table-xs tw:table-pin-rows tw:table-pin-cols tw:mt-1">
               <thead>
                 <tr>
                   <th></th>
@@ -409,10 +409,10 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
             </table>
           </div>
 
-          <div class="tw-modal-action">
+          <div class="tw:modal-action">
             <form method="dialog">
-              <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-center tw-gap-2" role="group">
-                <button class="tw-btn" onClick={(e) => {
+              <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
+                <button class="tw:btn" onClick={(e) => {
                   let m = [...props.store.tmpSettings.mapping];
 
                   missing().forEach((key) => {
@@ -430,33 +430,33 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
 
                   props.settingsModal().showModal();
                 }}>Yes</button>
-                <button class="tw-btn">No</button>
+                <button class="tw:btn">No</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
 
-      <div ref={exportButton} class="tw-dropdown tw-dropdown-top">
+      <div ref={exportButton} class="tw:dropdown tw:dropdown-top">
         <div
           tabIndex={0}
           role="button"
-          class="tw-btn tw-btn-primary tw-mt-2 tw-normal-case tw-relative tw-overflow-hidden tw-border-0"
+          class="tw:btn tw:btn-primary tw:mt-2 tw:normal-case tw:relative tw:overflow-hidden tw:border-0"
           classList={{
-            "tw-btn-disabled": downloadCount() > 0
+            "tw:btn-disabled": downloadCount() > 0
           }}
         >
           <Show when={downloadCount() > 0}>
             <div
-              class="tw-absolute tw-h-full tw-top-0 tw-left-0 tw-transition-all tw-bg-primary tw-opacity-50"
+              class="tw:absolute tw:h-full tw:top-0 tw:left-0 tw:transition-all tw:bg-primary tw:opacity-50"
               style={{
                 "width": `${(downloadedCount() / downloadCount()) * 100.0}%`
               }}
             ></div>
           </Show>
-          <span class="tw-z-10">{buttonText()}</span>
+          <span class="tw:z-10">{buttonText()}</span>
         </div>
-        <ul tabIndex={0} class="tw-dropdown-content tw-menu tw-bg-base-100 tw-rounded-box tw-z-[1] tw-w-72 tw-p-2 tw-shadow">
+        <ul tabIndex={0} class="tw:dropdown-content tw:menu tw:bg-base-100 tw:rounded-box tw:z-1 tw:w-72 tw:p-2 tw:shadow">
           <Index each={props.store.settings.exportMenu}>{(entry, i) =>
             <li><a onClick={async (e) => {
               e.preventDefault();

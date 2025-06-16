@@ -1,4 +1,4 @@
-import { Index, Show, For, createSignal, createEffect, on, batch, onMount, onCleanup } from "solid-js";
+import { Index, Show, For, createSignal, createEffect, on, batch, onMount, onCleanup, ParentComponent } from "solid-js";
 import {
   attachClosestEdge,
   extractClosestEdge,
@@ -18,14 +18,15 @@ import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/r
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import invariant from 'tiny-invariant';
 import { Select, createOptions } from "@thisbeyond/solid-select";
+import { query, createAsync } from "@solidjs/router";
 
 // DND taken from: https://atlassian.design/components/pragmatic-drag-and-drop/examples
 
 import { merge } from "@/utils/merge";
 import { exportOptions, defaultExportMenu } from "@/components/exporter";
 
-import "@thisbeyond/solid-select/style.css";
-import "./settings.css";
+import "./App.css";
+import PaymentsTable from "./components/PaymentsTable";
 
 declare module "solid-js" {
   namespace JSX {
@@ -165,14 +166,14 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
 
   return <>
     {state().type === 'is-dragging-over' && state().closestEdge === "top" ?
-      <tr class="tw-absolute tw-w-full tw-border-0"><td class="tw-w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
+      <tr class="tw:absolute tw:w-full tw:border-0"><td class="tw:w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
     }
     <tr ref={ref} classList={{
-      "tw-opacity-50": state().type === "is-dragging"
+      "tw:opacity-50": state().type === "is-dragging"
     }}>
-      <th class="tw-bg-transparent tw-p-0">
+      <th class="tw:bg-transparent tw:p-0">
         <span ref={handleRef}>
-          <GripVertical size={10} class="tw-h-5 tw-w-5 tw-inline-block tw-opacity-50" />
+          <GripVertical size={10} class="tw:h-5 tw:w-5 tw:inline-block tw:opacity-50" />
         </span>
         <span>{props.id}</span>
       </th>
@@ -180,7 +181,7 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
         <input
           type="text"
           placeholder="Key"
-          class="!tw-input !tw-input-bordered !tw-input-sm tw-w-full"
+          class="tw:input tw:input-bordered tw:input-sm tw:w-full"
           value={props.item.key}
           onInput={(e: Event) => {
             let target = e.currentTarget as (HTMLInputElement | null);
@@ -192,7 +193,7 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
         <input
           type="text"
           placeholder="Column"
-          class="!tw-input !tw-input-bordered !tw-input-sm tw-w-full"
+          class="tw:input tw:input-bordered tw:input-sm tw:w-full"
           value={props.item.column}
           onInput={(e: Event) => {
             let target = e.currentTarget as (HTMLInputElement | null);
@@ -201,25 +202,25 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
         />
       </td>
       <td class="text-right">
-        <div class="tw-inline-flex" role="group">
+        <div class="tw:inline-flex tw:items-center" role="group">
           <input
             type="checkbox"
             checked={props.item.enabled}
-            class="tw-checkbox tw-checkbox-xs tw-checkbox-primary tw-no-animation"
+            class="tw:checkbox tw:checkbox-xs tw:checkbox-primary tw:no-animation"
             onChange={(e: Event) => {
               let target = e.currentTarget as (HTMLInputElement | null);
               updateEntry(props.id - 1, "enabled", target?.checked);
             }}
           />
           <button
-            class="tw-btn tw-btn-xs tw-ml-1 tw-outline-none tw-border-none"
+            class="tw:btn tw:btn-xs tw:ml-1 tw:outline-hidden tw:border-none"
             onClick={() => {
               deleteEntry(props.id - 1);
             }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="tw-h-3 tw-w-3"
+              class="tw:h-3 tw:w-3"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor">
@@ -234,7 +235,7 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
       </td>
     </tr>
     {state().type === 'is-dragging-over' && state().closestEdge === "bottom" ?
-      <tr class="tw-absolute tw-w-full tw-border-0"><td class="tw-w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
+      <tr class="tw:absolute tw:w-full tw:border-0"><td class="tw:w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
     }
     {state().type === 'preview' ? (
       <Portal mount={state().container}>
@@ -365,15 +366,15 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
 
   return <>
     {state().type === 'is-dragging-over' && state().closestEdge === "top" ?
-      <tr class="tw-absolute tw-w-full tw-border-0"><td class="tw-w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
+      <tr class="tw:absolute tw:w-full tw:border-0"><td class="tw:w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
     }
     <tr ref={ref} classList={{
-      "tw-opacity-50": state().type === "is-dragging"
+      "tw:opacity-50": state().type === "is-dragging"
     }}>
-      <th class="tw-bg-transparent tw-p-0 tw-w-0">
-        <div class="tw-inline-flex" role="group">
+      <th class="tw:bg-transparent tw:p-0 tw:w-0">
+        <div class="tw:inline-flex" role="group">
           <span ref={handleRef}>
-            <GripVertical size={10} class="tw-h-5 tw-w-5 tw-inline-block tw-opacity-50" />
+            <GripVertical size={10} class="tw:h-5 tw:w-5 tw:inline-block tw:opacity-50" />
           </span>
           <span>{props.id}</span>
         </div>
@@ -382,7 +383,7 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
         <input
           type="text"
           placeholder="Title"
-          class="!tw-input !tw-input-bordered !tw-input-sm"
+          class="tw:input tw:input-bordered tw:input-sm"
           value={props.item.title || ""}
           onInput={(e: Event) => {
             let target = e.currentTarget as (HTMLInputElement | null);
@@ -390,7 +391,7 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
           }}
         />
       </td>
-      <td class="tw-max-w-60">
+      <td class="tw:max-w-60">
         <Select
           multiple
           {...createOptions(exportOptions)}
@@ -400,26 +401,26 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
           }}
         />
       </td>
-      <td class="text-right tw-w-0">
-        <div class="tw-inline-flex" role="group">
+      <td class="tw:text-right tw:w-0">
+        <div class="tw:inline-flex tw:items-center" role="group">
           <input
             type="checkbox"
             checked={props.item.enabled}
-            class="tw-checkbox tw-checkbox-xs tw-checkbox-primary tw-no-animation"
+            class="tw:checkbox tw:checkbox-xs tw:checkbox-primary tw:no-animation"
             onChange={(e: Event) => {
               let target = e.currentTarget as (HTMLInputElement | null);
               updateEntry(props.id - 1, "enabled", target?.checked);
             }}
           />
           <button
-            class="tw-btn tw-btn-xs tw-ml-1 tw-outline-none tw-border-none"
+            class="tw:btn tw:btn-xs tw:ml-1 tw:outline-hidden tw:border-none"
             onClick={() => {
               deleteEntry(props.id - 1);
             }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="tw-h-3 tw-w-3"
+              class="tw:h-3 tw:w-3"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor">
@@ -435,7 +436,7 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
     </tr >
     {
       state().type === 'is-dragging-over' && state().closestEdge === "bottom" ?
-        <tr class="tw-absolute tw-w-full tw-border-0"><td class="tw-w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
+        <tr class="tw:absolute tw:w-full tw:border-0"><td class="tw:w-full"><DropIndicator edge={"top"} gap={'0px'}></DropIndicator></td></tr> : null
     }
     {
       state().type === 'preview' ? (
@@ -447,7 +448,7 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
   </>;
 };
 
-const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) => {
+const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
   let confirmModal: any;
   let modal!: HTMLDialogElement;
   let modalResizeEl!: HTMLDivElement;
@@ -610,15 +611,15 @@ const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) =
 
   return (
     <div id="adp-export-app">
-      <dialog class="tw-modal" ref={confirmModal}>
-        <div class="tw-modal-box">
-          <h3 class="tw-font-bold tw-text-lg">Confirm</h3>
-          <p class="tw-py-4">You have unsaved changes. Close anyway?</p>
-          <div class="tw-modal-action">
+      <dialog class="tw:modal" ref={confirmModal}>
+        <div class="tw:modal-box">
+          <h3 class="tw:font-bold tw:text-lg">Confirm</h3>
+          <p class="tw:py-4">You have unsaved changes. Close anyway?</p>
+          <div class="tw:modal-action">
             <form method="dialog">
-              <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-center tw-gap-2" role="group">
-                <button class="tw-btn" onClick={(e) => confirmClose()}>Yes</button>
-                <button class="tw-btn">No</button>
+              <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
+                <button class="tw:btn" onClick={(e) => confirmClose()}>Yes</button>
+                <button class="tw:btn">No</button>
               </div>
             </form>
           </div>
@@ -628,101 +629,24 @@ const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) =
       <dialog ref={(e) => {
         modal = e;
         props.settingsModalRef(e);
-      }} class="tw-modal">
-        <div ref={modalResizeEl} class="tw-modal-box tw-resize tw-max-w-[unset]">
-          <h3 class="tw-font-bold tw-text-lg tw-relative">
-            ADP Export Configuration
+      }} class="tw:modal">
+        <div ref={modalResizeEl} class="tw:modal-box  tw:flex tw:flex-col tw:resize tw:max-w-4xl">
+          <h3 class="tw:font-bold tw:text-lg tw:relative">
+            ADP Export
           </h3>
 
-          <div role="tablist" class="tw-tabs tw-tabs-bordered">
-            <input type="radio" name="my_tabs_1" role="tab" class="focus-visible:!tw-outline-none !tw-border-0 !tw-tab tw-whitespace-nowrap" aria-label="Column Mapping" checked={true} />
-            <div role="tabpanel" class="tw-tab-content tw-pt-2">
-              <div class="tw-overflow-auto">
-                <table class="tw-table tw-table-sm tw-table-pin-rows tw-table-pin-cols tw-mt-1">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th>Key</th>
-                      <th>Column</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <Index each={store.tmpSettings.mapping}>
-                      {(item, i) => <MappingTableItem store={store} setStore={props.setStore} item={item()} id={i + 1} />}
-                    </Index>
-
-                    <tr>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td>
-                        <div class="tw-flex tw-justify-end">
-                          <button
-                            class="tw-btn tw-btn-xs tw-outline-none tw-border-none tw-text-lg"
-                            onClick={() => {
-                              addMappingEntry();
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-3 tw-w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+          <div role="tablist" class="tw:tabs tw:tabs-border tw:grow">
+            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Export" checked={true} />
+            <div role="tabpanel" class="tw:tab-content tw:pt-2">
+              <div class="tw:overflow-auto">
+                <PaymentsTable></PaymentsTable>
               </div>
             </div>
 
-            <input
-              type="radio"
-              name="my_tabs_1"
-              role="tab"
-              class="focus-visible:!tw-outline-none !tw-border-0 !tw-tab tw-whitespace-nowrap"
-              aria-label="Column Import/Export" />
-            <div role="tabpanel" class="tw-tab-content tw-pt-2">
-              <label class="tw-form-control tw-w-full">
-                <div class="tw-label">
-                  <span class="tw-label-text">Import</span>
-                </div>
-                <textarea
-                  ref={importTextArea}
-                  class="tw-textarea tw-textarea-bordered tw-leading-none tw-font-normal tw-p-2 tw-h-36"
-                  spellcheck={false}
-                ></textarea>
-              </label>
-
-              <Show when={importError()}>
-                <span class="tw-mt-2 tw-text-sm tw-text-red-500 tw-peer-[&:not(:placeholder-shown):not(:focus):invalid]:block">
-                  {importError()}
-                </span>
-              </Show>
-
-              <div class="tw-modal-action tw-mt-1">
-                <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-center tw-gap-2" role="group">
-                  <button class="tw-btn tw-btn-accent tw-no-animation" onClick={(e) => {
-                    importAndMerge();
-                  }}>Import and Merge</button>
-                </div>
-              </div>
-
-              <label class="tw-form-control tw-w-full">
-                <div class="tw-label">
-                  <span class="tw-label-text">Export (automaticly updated)</span>
-                </div>
-                <textarea
-                  class="tw-textarea tw-textarea-bordered tw-leading-none tw-font-normal tw-p-2 tw-h-36"
-                  spellcheck={false}
-                >
-                  {JSON.stringify(store.tmpSettings.mapping)}
-                </textarea>
-              </label>
-            </div>
-
-            <input type="radio" name="my_tabs_1" role="tab" class="focus-visible:!tw-outline-none !tw-border-0 !tw-tab tw-whitespace-nowrap" aria-label="Menu" />
-            <div role="tabpanel" class="tw-tab-content tw-pt-2">
-              <div class="tw-h-96 tw-overflow-x-auto">
-                <table class="tw-table tw-table-sm tw-table-pin-rows tw-table-pin-cols tw-mt-1 tw-table-auto">
+            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Menu" />
+            <div role="tabpanel" class="tw:tab-content tw:pt-2">
+              <div class="tw:overflow-x-auto">
+                <table class="tw:table tw:table-sm tw:table-pin-rows tw:table-pin-cols tw:mt-1 tw:table-auto">
                   <thead>
                     <tr>
                       <th></th>
@@ -741,14 +665,14 @@ const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) =
                       <td></td>
                       <td></td>
                       <td>
-                        <div class="tw-flex tw-justify-end">
+                        <div class="tw:flex tw:justify-end">
                           <button
-                            class="tw-btn tw-btn-xs tw-outline-none tw-border-none tw-text-lg"
+                            class="tw:btn tw:btn-xs tw:outline-hidden tw:border-none tw:text-lg"
                             onClick={() => {
                               addMenuEntry();
                             }}
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-3 tw-w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="tw:h-3 tw:w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
                           </button>
                         </div>
                       </td>
@@ -757,14 +681,93 @@ const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) =
                 </table>
               </div>
             </div>
+
+            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Column Mapping" />
+            <div role="tabpanel" class="tw:tab-content tw:pt-2">
+              <div class="tw:overflow-auto">
+                <table class="tw:table tw:table-sm tw:table-pin-rows tw:table-pin-cols tw:mt-1">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Key</th>
+                      <th>Column</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <Index each={store.tmpSettings.mapping}>
+                      {(item, i) => <MappingTableItem store={store} setStore={props.setStore} item={item()} id={i + 1} />}
+                    </Index>
+
+                    <tr>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                      <td>
+                        <div class="tw:flex tw:justify-end">
+                          <button
+                            class="tw:btn tw:btn-xs tw:outline-hidden tw:border-none tw:text-lg"
+                            onClick={() => {
+                              addMappingEntry();
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="tw:h-3 tw:w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <input
+              type="radio"
+              name="my_tabs_1"
+              role="tab"
+              class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
+              aria-label="Column Import/Export" />
+            <div role="tabpanel" class="tw:tab-content tw:pt-2">
+              <fieldset class="tw:fieldset tw:border-none">
+                <legend class="tw:fieldset-legend">Import</legend>
+                <textarea
+                  ref={importTextArea}
+                  class="tw:textarea tw:textarea-bordered tw:leading-none tw:font-normal tw:p-2 tw:w-auto"
+                  spellcheck={false}
+                ></textarea>
+
+                <Show when={importError()}>
+                  <span class="tw:mt-2 tw:text-sm tw:text-red-500 tw:peer-[&:not(:placeholder-shown):not(:focus):invalid]:block">
+                    {importError()}
+                  </span>
+                </Show>
+              </fieldset>
+
+              <div class="tw:modal-action tw:mt-1">
+                <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
+                  <button class="tw:btn tw:btn-accent tw:no-animation" onClick={(e) => {
+                    importAndMerge();
+                  }}>Import and Merge</button>
+                </div>
+              </div>
+
+              <fieldset class="tw:fieldset tw:border-none">
+                <legend class="tw:fieldset-legend">Export (automaticly updated)</legend>
+                <textarea
+                  ref={importTextArea}
+                  class="tw:textarea tw:textarea-bordered tw:leading-none tw:font-normal tw:p-2 tw:w-auto"
+                  spellcheck={false}
+                >{JSON.stringify(store.tmpSettings.mapping)}</textarea>
+              </fieldset>
+            </div>
           </div>
 
-          <div class="tw-modal-action tw-mt-1">
-            <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-center tw-gap-2" role="group">
-              <button class="tw-btn tw-btn-primary" onClick={(e) => {
+          <div class="tw:modal-action tw:mt-1">
+            <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
+              <button class="tw:btn tw:btn-primary" onClick={(e) => {
                 save();
               }}>Save</button>
-              <button class="tw-btn" onClick={(e) => {
+              <button class="tw:btn" onClick={(e) => {
                 close();
               }}>Close</button>
             </div>
@@ -775,4 +778,4 @@ const Settings = (props: { settingsModalRef: any, store: any, setStore: any }) =
   );
 };
 
-export default Settings;
+export default Main;

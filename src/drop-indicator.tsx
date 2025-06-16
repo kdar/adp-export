@@ -12,16 +12,16 @@ const edgeToOrientationMap: Record<Edge, Orientation> = {
 
 const orientationStyles: Record<Orientation, JSX.HTMLAttributes<HTMLElement>['class']> = {
   horizontal:
-    'tw-h-[--line-thickness] tw-left-[--terminal-size] tw-right-0 before:tw-left-[--negative-terminal-size]',
+    'tw:h-(--line-thickness) tw:left-(--terminal-size) tw:right-0 tw:before:left-(--negative-terminal-size)',
   vertical:
-    'tw-w-[--line-thickness] tw-top-[--terminal-size] tw-bottom-0 before:tw-top-[--negative-terminal-size]',
+    'tw:w-(--line-thickness) tw:top-(--terminal-size) tw:bottom-0 tw:before:top-(--negative-terminal-size)',
 };
 
 const edgeStyles: Record<Edge, JSX.HTMLAttributes<HTMLElement>['class']> = {
-  top: 'tw-top-[--line-offset] before:tw-top-[--offset-terminal]',
-  right: 'tw-right-[--line-offset] before:tw-right-[--offset-terminal]',
-  bottom: 'tw-bottom-[--line-offset] before:tw-bottom-[--offset-terminal]',
-  left: 'tw-left-[--line-offset] before:tw-left-[--offset-terminal]',
+  top: 'tw:top-(--line-offset) tw:before:top-(--offset-terminal)',
+  right: 'tw:right-(--line-offset) tw:before:right-(--offset-terminal)',
+  bottom: 'tw:bottom-(--line-offset) tw:before:bottom-(--offset-terminal)',
+  left: 'tw:left-(--line-offset) tw:before:left-(--offset-terminal)',
 };
 
 const strokeSize = 2;
@@ -44,7 +44,7 @@ export function DropIndicator(props: { edge: Edge; gap: string }) {
           '--offset-terminal': `${offsetToAlignTerminalWithLine}px`,
         } as JSX.CSSProperties
       }
-      class={`tw-absolute tw-z-10 tw-bg-blue-700 tw-pointer-events-none before:tw-content-[''] before:tw-w-[--terminal-size] before:tw-h-[--terminal-size] tw-box-border before:tw-absolute before:tw-border-[length:--line-thickness] before:tw-border-solid before:tw-border-blue-700 before:tw-rounded-full ${orientationStyles[edgeToOrientationMap[props.edge]]} ${[edgeStyles[props.edge]]}`}
+      class={`tw:absolute tw:z-10 tw:bg-blue-700 tw:pointer-events-none tw:before:content-[''] tw:before:w-(--terminal-size) tw:before:h-(--terminal-size) tw:box-border tw:before:absolute tw:before:border-(length:--line-thickness) tw:before:border-solid before:tw:border-blue-700 tw:before:rounded-full ${orientationStyles[edgeToOrientationMap[props.edge]]} ${[edgeStyles[props.edge]]}`}
     />
   );
 }

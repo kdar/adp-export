@@ -1,7 +1,8 @@
+@import "@thisbeyond/solid-select/style.css";
+@reference "./index.css";
 
 .solid-select-control {
-  @apply tw-input-sm;
-  @apply tw-input-bordered;
+  @apply tw:input-sm;
   height: inherit;
   line-height: inherit;
   border-radius: var(--rounded-btn, .5rem)!important;
@@ -14,5 +15,5 @@
 }
 
 .solid-select-multi-value {
-  @apply tw-text-sm;
+  @apply tw:text-sm;
 }
