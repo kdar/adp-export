@@ -10,60 +10,33 @@
     "build": "vite build"
   },
   "license": "GPL-3.0",
-  "userscript": {
-    "entry": "./dist/index.js",
-    "dev": "./dist",
-    "release": "./release",
-    "fileName": "adp-export",
-    "meta": {
-      "name": "ADP export",
-      "namespace": "kdar",
-      "version": "0.0.6",
-      "description": "Exports ADP paystub data in JSON and CSV",
-      "author": "Kevin Darlington",
-      "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWhhcmQtZHJpdmUtZG93bmxvYWQiPjxwYXRoIGQ9Ik0xMiAydjgiLz48cGF0aCBkPSJtMTYgNi00IDQtNC00Ii8+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHg9IjIiIHk9IjE0IiByeD0iMiIvPjxwYXRoIGQ9Ik02IDE4aC4wMSIvPjxwYXRoIGQ9Ik0xMCAxOGguMDEiLz48L3N2Zz4=",
-      "match": [
-        "https://portal.people.adp.com/*,https://online.emea.adp.com/*"
-      ],
-      "grant": [
-        "GM_addStyle",
-        "GM_getValue",
-        "GM_setValue",
-        "GM_registerMenuCommand"
-      ],
-      "run-at": "document-idle",
-      "downloadURL": "https://github.com/kdar/adp-export/releases/latest/download/adp-export.user.js",
-      "updateURL": "https://github.com/kdar/adp-export/releases/latest/download/adp-export.user.js",
-      "supportURL": "https://github.com/kdar/adp-export/issues"
-    }
-  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.10",
     "@types/file-saver": "^2.0.7",
-    "@types/node": "^22.2.0",
-    "@types/tampermonkey": "^5.0.3",
-    "@types/wicg-file-system-access": "^2023.10.5",
+    "@types/node": "^24.0.3",
+    "@types/tampermonkey": "^5.0.4",
+    "@types/wicg-file-system-access": "^2023.10.6",
     "daisyui": "^5.0.43",
-    "postcss": "^8.4.33",
+    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.10",
     "typescript": "5.5.4",
-    "vite": "^5.0.11",
-    "vite-plugin-css-injected-by-js": "^3.5.1",
-    "vite-plugin-monkey": "^5.0.3",
-    "vite-plugin-solid": "^2.8.2"
+    "vite": "^6.3.5",
+    "vite-plugin-css-injected-by-js": "^3.5.2",
+    "vite-plugin-monkey": "^5.0.8",
+    "vite-plugin-solid": "^2.11.6"
   },
   "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^1.1.12",
+    "@atlaskit/pragmatic-drag-and-drop": "^1.7.2",
     "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^1.4.0",
-    "@atlaskit/pragmatic-drag-and-drop-flourish": "^1.1.0",
-    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.3",
+    "@atlaskit/pragmatic-drag-and-drop-flourish": "^1.2.2",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
     "@solid-primitives/scheduled": "^1.5.1",
     "@solidjs/router": "^0.15.3",
     "@tanstack/solid-table": "^8.21.3",
     "@thisbeyond/solid-select": "^0.15.0",
     "file-saver": "^2.0.5",
     "lucide-solid": "^0.395.0",
-    "solid-js": "^1.8.11",
+    "solid-js": "^1.9.7",
     "tiny-invariant": "^1.3.3"
   }
 }

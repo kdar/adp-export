@@ -1,10 +1,6 @@
 import { Index, Show, batch, createEffect, createSignal, on, onMount, untrack } from "solid-js";
 // import { saveAs } from 'file-saver';
 
-declare var angular: any;
-
-var cachedOverview: any | null = null;
-
 declare global {
   interface Window {
     getAppShell: Function,
@@ -179,35 +175,14 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
   };
 }
 
-async function getJsonData() {
-  if (cachedOverview === null) {
-    let n = await window.getAppShell().getHttpClient();
-    cachedOverview = await n.get("/gvservice/xxxxxxxx/ess/pay/overview");
-  }
-
-  const j = {
-    "buckets": cachedOverview.data.buckets,
-    "payments": cachedOverview.data.payStatements.map((v: any) => {
-      if (v.date.toISOString) {
-        let parts = v.date.toISOString().split("T");
-        v.date = parts[0];
-      }
-      return v;
-    }),
-  };
-
-  // Gets rid of angular specific keys, like $$hashKey.
-  return JSON.parse(angular.toJson(j));
-}
-
-export const Exporter = (props: { store: any, setStore: any, settingsModal: any }) => {
+export const Exporter = (props: { store: any, setStore: any, overviewData: any, selectedData: any, devKey: any }) => {
   let missingModal: any;
   let [missing, setMissing] = createSignal<string[]>([]);
-  let [buttonText, setButtonText] = createSignal("Export");
+  let [buttonText, setButtonText] = createSignal("Export...");
   let [scope, setScope] = createSignal<any>({});
   const [downloadCount, setDownloadCount] = createSignal(0);
   const [downloadedCount, setDownloadedCount] = createSignal(0);
-  let downloadQueue: Function[] = [];
+  const [downloadQueue, setDownloadQueue] = createSignal<Function[]>([]);
 
   const exportData = async (type: string, payData: any) => {
     let name = "paydata";
@@ -219,13 +194,13 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
 
     switch (type) {
       case "Download JSON (combined)": {
-        downloadQueue.push(async () => {
+        setDownloadQueue(x => [...x, async () => {
           // console.log("Download " + name + ".json");          
           saveAs(new Blob([JSON.stringify(payData, null, 2)], {
             type: 'text/json;charset=utf-8'
           }), name + ".json");
           setDownloadedCount(downloadedCount() + 1);
-        });
+        }]);
         setDownloadCount(downloadCount() + 1);
 
         break;
@@ -236,13 +211,13 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
       }
       case "Download CSV (combined)": {
         let { csv } = jsonToCsv(payData, props.store.settings.mapping);
-        downloadQueue.push(async () => {
+        setDownloadQueue(x => [...x, async () => {
           // console.log("Download " + name + ".csv");
           saveAs(new Blob([csv.join("\n")], {
             type: 'text/csv;charset=utf-8'
           }), name + ".csv");
           setDownloadedCount(downloadedCount() + 1);
-        });
+        }]);
         setDownloadCount(downloadCount() + 1);
 
         break;
@@ -259,42 +234,44 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
         break;
       }
       case "Download PDF (combined)": {
-        downloadQueue.push(async () => {
-          // console.log("Download " + name + ".zip");
-          let resp = await fetch(scope().getMultiplePayslipsLink(), {
-            method: 'GET'
-          });
-          let blob = await resp.blob();
-          saveAs(blob, name + ".zip");
-          setDownloadedCount(downloadedCount() + 1);
+        let refs = payData.payments.map((v: any) => {
+          return `${v.id}:${v.date}`;
         });
+
+        let now = Date.now();
+        let name = `pay_statements.zip`;
+
+        let client = await window.getAppShell().getHttpClient();
+        let resp = await client.get(
+          `/gvservice/${props.devKey()}/payroll/payStatements/?id=${refs.join("&id=")}&celPay=`,
+          { responseType: "blob" }
+        );
+        let blob = resp.data;
+
+        setDownloadQueue(x => [...x, async () => {
+          saveAs(blob, name);
+          setDownloadedCount(downloadedCount() + 1);
+        }]);
         setDownloadCount(downloadCount() + 1);
 
         break;
       }
-      case "download_pdf": {
-        let generatePDFURL!: Function;
-        scope().$parent.$$watchers.forEach((watcher: any) => {
-          if (watcher.exp === "selected_payment") {
-            if (watcher.fn.toString().indexOf("function(newValue, oldValue, scope)") !== -1) {
-              generatePDFURL = watcher.fn;
-            }
-          }
-        });
+      case "Download PDF (separate)": {
+        let payment = payData.payments[0]
+        let now = Date.now();
+        let name = `Payslip_${payment.date}.pdf`;
 
-        let fakeScope = {
-          buckets: [], // scope().buckets,
-          selected_payment: {
-            buckets: []
-          },
-          payslipUrl: ""
-        };
-        generatePDFURL(payData.payments[0], {}, fakeScope);
-        downloadQueue.push(async () => {
-          // console.log("Download " + name + ".pdf");
-          saveAs(fakeScope.payslipUrl, name + ".pdf");
+        let client = await window.getAppShell().getHttpClient();
+        let resp = await client.get(
+          `/gvservice/${props.devKey()}/payroll/payStatement/${now}/images/${name}?pdfId=${payment.id}&celPay=&action=pdf&ref=${now}`,
+          { responseType: "blob" }
+        );
+        let blob = resp.data;
+
+        setDownloadQueue(x => [...x, async () => {
+          saveAs(blob, name);
           setDownloadedCount(downloadedCount() + 1);
-        });
+        }]);
         setDownloadCount(downloadCount() + 1);
 
         break;
@@ -324,7 +301,7 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
       }
       case "Download PDF (separate)": {
         payData.payments.forEach(async (payments: any[]) => {
-          await exportData("download_pdf", {
+          await exportData("Download PDF (separate)", {
             ...payData,
             payments: [payments]
           });
@@ -336,37 +313,38 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
     }
   };
 
-  onMount(async () => {
-    let $scope = angular.element(document.querySelector("#pay_history")).scope();
-    setScope($scope);
+  // onMount(async () => {
+  //   let $scope = angular.element(document.querySelector("#pay_history")).scope();
+  //   setScope($scope);
 
-    scope().$watch("selected_payment", function (newv: any, oldv: any) {
-      let count = 1;
-      if (Array.isArray(newv)) {
-        count = newv.length;
-      }
-      setButtonText(`Export (${count})`);
-    });
-  });
+  //   scope().$watch("selected_payment", function (newv: any, oldv: any) {
+  //     let count = 1;
+  //     if (Array.isArray(newv)) {
+  //       count = newv.length;
+  //     }
+  //     setButtonText(`Export (${count})...`);
+  //   });
+  // });
 
-  createEffect(on(downloadCount, (count) => {
-    if (count === 0) { return; }
+  // createEffect(on(downloadCount, (count) => {
+  //   if (count === 0) { return; }
+  //   console.log("Called", downloadCount());
 
-    // This avoids the limit of chrome and maybe other browsers, that you can only download
-    // 10 things within a second otherwise it cancels all subsequent downloads.
-    const processQueue = () => {
-      let fn = downloadQueue.pop();
-      if (fn) {
-        fn();
-        setTimeout(processQueue, 200);
-      } else {
-        setDownloadCount(0);
-        setDownloadedCount(0);
-      }
-    };
+  //   // This avoids the limit of chrome and maybe other browsers, that you can only download
+  //   // 10 things within a second otherwise it cancels all subsequent downloads.
+  //   const processQueue = () => {
+  //     let fn = downloadQueue.pop();
+  //     if (fn) {
+  //       fn();
+  //       setTimeout(processQueue, 300);
+  //     } else {
+  //       setDownloadCount(0);
+  //       setDownloadedCount(0);
+  //     }
+  //   };
 
-    setTimeout(processQueue, 1);
-  }, { defer: true }));
+  //   setTimeout(processQueue, 1);
+  // }, { defer: true }));
 
   let exportButton!: HTMLDivElement;
   return (
@@ -428,7 +406,7 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
                     m,
                   );
 
-                  props.settingsModal().showModal();
+                  // props.settingsModal().showModal();
                 }}>Yes</button>
                 <button class="tw:btn">No</button>
               </div>
@@ -437,13 +415,13 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
         </div>
       </dialog>
 
-      <div ref={exportButton} class="tw:dropdown tw:dropdown-top">
+      <div ref={exportButton} class="tw:dropdown tw:dropdown-top tw:dropdown-end">
         <div
           tabIndex={0}
           role="button"
-          class="tw:btn tw:btn-primary tw:mt-2 tw:normal-case tw:relative tw:overflow-hidden tw:border-0"
+          class="tw:btn tw:btn-secondary tw:normal-case tw:relative tw:overflow-hidden tw:border-0"
           classList={{
-            "tw:btn-disabled": downloadCount() > 0
+            "tw:btn-disabled": downloadCount() > 0 || Object.keys(props.selectedData()).length === 0
           }}
         >
           <Show when={downloadCount() > 0}>
@@ -454,14 +432,14 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
               }}
             ></div>
           </Show>
-          <span class="tw:z-10">{buttonText()}</span>
+          <span class="tw:z-10"><Show when={Object.keys(props.selectedData()).length} fallback="Export...">Export {Object.keys(props.selectedData()).length}...</Show></span>
         </div>
         <ul tabIndex={0} class="tw:dropdown-content tw:menu tw:bg-base-100 tw:rounded-box tw:z-1 tw:w-72 tw:p-2 tw:shadow">
           <Index each={props.store.settings.exportMenu}>{(entry, i) =>
             <li><a onClick={async (e) => {
               e.preventDefault();
 
-              let payData = await getJsonData();
+              let payData = props.overviewData();
 
               // Check to see if we are going to do anything with CSV and if we are, check to
               // see if we have any missing mappings. We will use all the available paystubs
@@ -478,12 +456,7 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
                 }
               }
 
-              // Only set the payments to what is selected.
-              let selected = scope().getSelected();
-              let selectedMap: any = {};
-              selected.forEach((v: { id: string }) => {
-                selectedMap[v.id] = true;
-              });
+              let selectedMap: any = props.selectedData();
               payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
 
               batch(() => {
@@ -491,6 +464,32 @@ export const Exporter = (props: { store: any, setStore: any, settingsModal: any 
                   await onClickExportData({ ...payData }, v);
                 });
               });
+
+              // This avoids the limit of chrome and maybe other browsers, that you can only download
+              // 10 things within a second otherwise it cancels all subsequent downloads. So every interval
+              // we pop something off the download queue and download it, then wait for the next interval.
+              let intervalId = 0;
+              let lastDownloadCount = -1;
+              const processQueue = () => {
+                if (lastDownloadCount === -1 || lastDownloadCount === downloadCount()) {
+                  lastDownloadCount = downloadCount();
+                  return;
+                }
+
+                let fn: Function = downloadQueue()[0];
+                setDownloadQueue(x => {
+                  return x.slice(1);
+                });
+                if (fn) {
+                  fn();
+                } else {
+                  setDownloadCount(0);
+                  setDownloadedCount(0);
+                  clearInterval(intervalId);
+                }
+              };
+
+              intervalId = setInterval(processQueue, 200);
               (document.activeElement as HTMLElement)?.blur();
             }}>{entry().title}</a></li>
           }</Index>

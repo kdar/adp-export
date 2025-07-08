@@ -3,9 +3,14 @@ import solidPlugin from "vite-plugin-solid";
 import path from "path";
 // import { exec } from 'node:child_process';
 import monkey from 'vite-plugin-monkey';
+// import mkcert from 'vite-plugin-mkcert'
 
 export default defineConfig({
+  // server: {
+  //   host: "localhost.adp.com"
+  // },
   plugins: [
+    // mkcert(),
     solidPlugin(),
     monkey({
       entry: 'src/index.tsx',
@@ -24,7 +29,7 @@ export default defineConfig({
         description: 'Exports ADP paystub data in JSON and CSV',
         author: 'Kevin Darlington',
         version: '0.0.6',
-        grant: ['GM_getValue'],
+        grant: ['GM_getValue', 'GM_setValue', 'GM_info', 'GM_registerMenuCommand'],
       },
     }),
   ],

@@ -1,12 +1,11 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
-import { createSignal, onMount, createEffect } from 'solid-js';
+import { createSignal, onMount, createEffect, createResource } from 'solid-js';
 import { createStore, Store, SetStoreFunction } from 'solid-js/store';
-import { Exporter, defaultExportMenu } from '@/components/exporter';
-import { waitForMultiple, waitForSingle } from '@/utils/wait';
-import { GM_getValue, GM_setValue, GM_registerMenuCommand, GM_info, unsafeWindow, monkeyWindow } from '$';
+import { defaultExportMenu } from '@/components/exporter';
+import { GM_getValue, GM_setValue, GM_registerMenuCommand, GM_info } from '$';
 
-import Main from '@/App';
+import App from '@/App';
 import '@/index.css';
 
 const latestStateVersion = 2;
@@ -19,26 +18,23 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 }
 
 function upgradeState(storageKey: string, state: any): any {
-  let version = state.version || 1;
+  let version = state.version ?? 1;
   for (let x = version; x < latestStateVersion; x++) {
-    switch (x) {
-      // Upgrade from version 1 to 2.
-      case 1: {
-        GM_setValue(`${storageKey}.v1`, JSON.stringify(state));
-        let newState = {
-          version: 2,
-          tmpSettings: {
-            mapping: state.tmpMapping || [],
-            exportMenu: [...defaultExportMenu],
-          },
-          settings: {
-            mapping: state.mapping || [],
-            exportMenu: [...defaultExportMenu]
-          },
-        };
-        state = newState;
-        break;
-      }
+    // Upgrade from version 1 to 2.
+    if (x === 1) {
+      GM_setValue(`${storageKey}.v1`, JSON.stringify(state));
+      let newState = {
+        version: 2,
+        tmpSettings: {
+          mapping: state.tmpMapping ?? [],
+          exportMenu: [...defaultExportMenu],
+        },
+        settings: {
+          mapping: state.mapping ?? [],
+          exportMenu: [...defaultExportMenu]
+        },
+      };
+      state = newState;
     }
   }
 
@@ -61,7 +57,7 @@ function merge(target: any, source: any) {
     }
   });
 
-  Object.assign(target || {}, source);
+  Object.assign(target ?? {}, source);
   return target;
 }
 
@@ -76,6 +72,7 @@ function createGMStore<T extends object>(
       saved = upgradeState(key, saved);
       setState(merge({ ...initState }, saved));
     } catch (error) {
+      console.error(error);
       setState(initState);
     }
   }
@@ -87,10 +84,44 @@ function createGMStore<T extends object>(
   return [state, setState];
 }
 
+async function fetchDevKey() {
+  let client = await window.getAppShell().getHttpClient();
+  let resp = await client.get("/mcp-micro/microapi-theme/microapi/v1/associates/userDevKey");
+  return resp.data.devKey;
+}
 
-(async () => {
+async function fetchOverviewData(devKey: string) {
+  let client = await window.getAppShell().getHttpClient();
+  const overviewData = await client.get(`/gvservice/${devKey}/ess/pay/overview`);
+
+  const j = {
+    "buckets": overviewData.data.buckets,
+    "payments": overviewData.data.payments.map((v: any) => {
+      if (v.date.toISOString) {
+        let parts = v.date.toISOString().split("T");
+        v.date = parts[0];
+      }
+      return v;
+    }),
+  };
+
+  return j;
+}
+
+function ready(fn: any) {
+  let id = setInterval(() => {
+    if (window.getAppShell) {
+      clearInterval(id);
+      fn();
+    }
+  }, 1000);
+}
+
+async function main() {
   'use strict';
 
+  const [devKey] = createResource(fetchDevKey);
+  const [overviewData] = createResource(devKey, fetchOverviewData);
   let [settingsModal, setSettingsModal] = createSignal<HTMLDialogElement | null>(null);
   const [store, setStore] = createGMStore('adp-export', {}, {
     version: latestStateVersion,
@@ -104,39 +135,15 @@ function createGMStore<T extends object>(
     },
   });
 
-  // const mountExporter = async () => {
-  //   if (!/.*\/pay.*/.test(location.hash)) { return; }
-
-  //   let [payHistoryEl]: HTMLElement[] = await waitForSingle('#pay_history');
-  //   if (payHistoryEl?.dataset.adpExportLoaded !== "true") {
-  //     payHistoryEl.dataset.adpExportLoaded = "true";
-
-  //     render(() => {
-  //       return <Exporter store={store} setStore={setStore} settingsModal={settingsModal}></Exporter>
-  //     }, payHistoryEl);
-
-  //     let yearPanels = await waitForMultiple('.panel-heading.pay-year-head .panel-title');
-  //     yearPanels.forEach((panelEl: HTMLElement) => {
-  //       render(() => {
-  //         return <Panel year={parseInt(panelEl.innerText)}></Panel>;
-  //       }, panelEl);
-  //     });
-  //   }
-  // };
-
-  // setTimeout(() => {
-  //   mountExporter();
-  //   addEventListener("hashchange", mountExporter);
-  // }, 0);
-
   render(() => {
     onMount(() => {
       GM_registerMenuCommand(`${GM_info.script.name} Open`, async () => {
-        // console.log(await GM.getValue("adpPaystubDownloadConfig"));
         settingsModal()?.showModal();
       });
     });
 
-    return <Main settingsModalRef={setSettingsModal} store={store} setStore={setStore} />;
+    return <App settingsModalRef={setSettingsModal} store={store} setStore={setStore} overviewData={overviewData} devKey={devKey} />;
   }, root);
-})();
+}
+
+ready(main);

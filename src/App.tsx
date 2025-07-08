@@ -1,4 +1,4 @@
-import { Index, Show, For, createSignal, createEffect, on, batch, onMount, onCleanup, ParentComponent } from "solid-js";
+import { Index, Show, createSignal, createEffect, batch, onMount, Switch, Match } from "solid-js";
 import {
   attachClosestEdge,
   extractClosestEdge,
@@ -7,23 +7,22 @@ import {
 import {
   draggable,
   dropTargetForElements,
+  monitorForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { pointerOutsideOfPreview } from '@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { GripVertical } from 'lucide-solid';
 import { Portal } from 'solid-js/web';
 import { DropIndicator } from '@/drop-indicator';
-import { triggerPostMoveFlash } from '@atlaskit/pragmatic-drag-and-drop-flourish/trigger-post-move-flash';
 import { reorderWithEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge';
-import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import invariant from 'tiny-invariant';
 import { Select, createOptions } from "@thisbeyond/solid-select";
-import { query, createAsync } from "@solidjs/router";
+import type { JSX } from 'solid-js';
 
 // DND taken from: https://atlassian.design/components/pragmatic-drag-and-drop/examples
 
 import { merge } from "@/utils/merge";
-import { exportOptions, defaultExportMenu } from "@/components/exporter";
+import { exportOptions, Exporter } from "@/components/exporter";
 
 import "./App.css";
 import PaymentsTable from "./components/PaymentsTable";
@@ -79,7 +78,6 @@ const MappingTableItem = (props: { store: any, setStore: any, item: MappingItem,
 
   createEffect(() => {
     const element = ref;
-    const item = props.item;
     invariant(element);
     const dragHandle = handleRef;
     invariant(dragHandle);
@@ -279,7 +277,6 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
 
   createEffect(() => {
     const element = ref;
-    const item = props.item;
     invariant(element);
     const dragHandle = handleRef;
     invariant(dragHandle);
@@ -448,13 +445,19 @@ const MenuTableItem = (props: { store: any, setStore: any, item: MenuItem, id: n
   </>;
 };
 
-const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
+const App = (props: { settingsModalRef: any, store: any, setStore: any, overviewData: any, devKey: any }) => {
   let confirmModal: any;
   let modal!: HTMLDialogElement;
   let modalResizeEl!: HTMLDivElement;
   let importTextArea: any;
   const store = props.store;
   const [importError, setImportError] = createSignal<string | null>(null);
+  const [selectedTab, setSelectedTab] = createSignal<string>('tab1');
+  const [selectedData, setSelectedData] = createSignal([]);
+
+  const handleTabChange: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+    setSelectedTab(event.currentTarget.value);
+  };
 
   const save = () => {
     let mappings = store.tmpSettings.mapping.filter((v: any) => {
@@ -484,8 +487,6 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
         menu,
       );
     });
-
-    modal.close();
   };
 
   const close = () => {
@@ -556,7 +557,7 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
 
         const sourceData = source.data;
         const targetData = target.data;
-        if (!!!sourceData.dnd || !!!targetData.dnd) {
+        if (!sourceData.dnd || !targetData.dnd) {
           return;
         }
 
@@ -636,14 +637,32 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
           </h3>
 
           <div role="tablist" class="tw:tabs tw:tabs-border tw:grow">
-            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Export" checked={true} />
+            <input
+              type="radio"
+              name="main_tabs"
+              role="tab"
+              class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
+              aria-label="Export"
+              value="tab1"
+              checked={selectedTab() === 'tab1'}
+              onInput={handleTabChange}
+            />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
               <div class="tw:overflow-auto">
-                <PaymentsTable></PaymentsTable>
+                <PaymentsTable overviewData={props.overviewData} setSelectedData={setSelectedData}></PaymentsTable>
               </div>
             </div>
 
-            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Menu" />
+            <input
+              type="radio"
+              name="main_tabs"
+              role="tab"
+              class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
+              aria-label="Menu"
+              value="tab2"
+              checked={selectedTab() === 'tab2'}
+              onInput={handleTabChange}
+            />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
               <div class="tw:overflow-x-auto">
                 <table class="tw:table tw:table-sm tw:table-pin-rows tw:table-pin-cols tw:mt-1 tw:table-auto">
@@ -682,7 +701,16 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
               </div>
             </div>
 
-            <input type="radio" name="my_tabs_1" role="tab" class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap" aria-label="Column Mapping" />
+            <input
+              type="radio"
+              name="main_tabs"
+              role="tab"
+              class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
+              aria-label="Column Mapping"
+              value="tab3"
+              checked={selectedTab() === 'tab3'}
+              onInput={handleTabChange}
+            />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
               <div class="tw:overflow-auto">
                 <table class="tw:table tw:table-sm tw:table-pin-rows tw:table-pin-cols tw:mt-1">
@@ -723,10 +751,14 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
 
             <input
               type="radio"
-              name="my_tabs_1"
+              name="main_tabs"
               role="tab"
               class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
-              aria-label="Column Import/Export" />
+              aria-label="Column Import/Export"
+              value="tab4"
+              checked={selectedTab() === 'tab4'}
+              onInput={handleTabChange}
+            />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
               <fieldset class="tw:fieldset tw:border-none">
                 <legend class="tw:fieldset-legend">Import</legend>
@@ -764,9 +796,16 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
 
           <div class="tw:modal-action tw:mt-1">
             <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
-              <button class="tw:btn tw:btn-primary" onClick={(e) => {
-                save();
-              }}>Save</button>
+              <Switch fallback={<div>Error. Can't figure out which tab is selected.</div>}>
+                <Match when={selectedTab() === "tab1"}>
+                  <Exporter store={props.store} setStore={props.setStore} overviewData={props.overviewData} selectedData={selectedData} devKey={props.devKey}></Exporter>
+                </Match>
+                <Match when={selectedTab() !== "tab1"}>
+                  <button class="tw:btn tw:btn-primary" disabled={JSON.stringify(store.tmpSettings) === JSON.stringify(store.settings)} onClick={(e) => {
+                    save();
+                  }}>Save</button>
+                </Match>
+              </Switch>
               <button class="tw:btn" onClick={(e) => {
                 close();
               }}>Close</button>
@@ -778,4 +817,4 @@ const Main = (props: { settingsModalRef: any, store: any, setStore: any }) => {
   );
 };
 
-export default Main;
+export default App;

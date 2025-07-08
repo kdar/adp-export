@@ -8,6 +8,8 @@ import {
   ColumnDef,
   ColumnFiltersState,
   createSolidTable,
+  SortingState,
+  getSortedRowModel,
 } from '@tanstack/solid-table'
 import { debounce } from '@solid-primitives/scheduled'
 import { createSignal, For } from 'solid-js'
@@ -51,24 +53,30 @@ const columns: ColumnDef<Payment>[] = [
   },
   {
     accessorKey: 'date',
+    id: 'date',
     header: () => 'Date',
-    footer: info => info.column.id,
   },
   {
-    accessorKey: 'grossPay',
+    accessorKey: 'gross',
+    id: 'gross',
     header: () => 'Gross Pay',
-    footer: info => info.column.id,
+    cell: info => `$${info.getValue()}`,
   },
   {
-    accessorKey: 'netPay',
+    accessorKey: 'amount',
+    id: 'net',
     header: () => 'Net Pay',
-    footer: info => info.column.id,
+    cell: info => `$${info.getValue()}`,
   },
 ]
 
-const Main = (props: {}) => {
+const PaymentsTable = (props: { overviewData: any, setSelectedData: any }) => {
   const [globalFilter, setGlobalFilter] = createSignal('');
   const [rowSelection, setRowSelection] = createSignal({});
+  const [sorting, setSorting] = createSignal<SortingState>([{
+    id: 'date',
+    desc: true,
+  }]);
   const debounceSetGlobalFilter = debounce(
     (value: string) => setGlobalFilter(value),
     500
@@ -76,33 +84,34 @@ const Main = (props: {}) => {
 
   const table = createSolidTable({
     get data() {
-      return [
-        {
-          id: "2324345346",
-          date: "2025-05-05",
-          grossPay: "$15234.5",
-          netPay: "$1000.2",
-        },
-        {
-          id: "1324345346",
-          date: "2025-05-06",
-          grossPay: "$25234.5",
-          netPay: "$2000.2",
-        }
-      ];
+      if (props.overviewData()) {
+        return props.overviewData().payments;
+      }
+
+      return [];
     },
     columns,
     state: {
-      rowSelection: rowSelection(),
+      get rowSelection() {
+        return rowSelection()
+      },
       get globalFilter() {
         return globalFilter()
       },
+      get sorting() {
+        return sorting()
+      }
     },
-    onRowSelectionChange: updateOrValue => {
-      setRowSelection(
-        typeof updateOrValue === 'function'
-          ? updateOrValue(rowSelection())
-          : updateOrValue)
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    enableRowSelection: true,
+    onRowSelectionChange: (selection) => {
+      setRowSelection(selection);
+      if (selection instanceof Function) {
+        props.setSelectedData(selection(rowSelection()));
+      } else {
+        props.setSelectedData(selection);
+      }
     },
     getRowId: row => row.id,
     onGlobalFilterChange: setGlobalFilter,
@@ -120,55 +129,74 @@ const Main = (props: {}) => {
 
   return <div>
     <input
-      class="tw:input"
+      class="tw:input tw:mt-2 tw:ml-2"
       value={globalFilter() ?? ''}
       onInput={e => debounceSetGlobalFilter(e.currentTarget.value)}
       placeholder="Search..."
     />
 
-    <table class="tw:table">
-      <thead>
-        <For each={table.getHeaderGroups()}>
-          {headerGroup => (
-            <tr>
-              <For each={headerGroup.headers}>
-                {header => (
-                  <th colSpan={header.colSpan}>
-                    {header.isPlaceholder ? null : (
-                      <>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </>
-                    )}
-                  </th>
-                )}
-              </For>
-            </tr>
-          )}
-        </For>
-      </thead>
-      <tbody>
-        <For each={table.getRowModel().rows.slice(0, 10)}>
-          {row => (
-            <tr>
-              <For each={row.getVisibleCells()}>
-                {cell => (
-                  <td>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext()
-                    )}
-                  </td>
-                )}
-              </For>
-            </tr>
-          )}
-        </For>
-      </tbody>
-    </table>
+    <div class="tw:overflow-x-auto" style="height: 320px">
+      <table class="tw:table tw:table-pin-rows tw:table-pin-cols">
+        <thead>
+          <For each={table.getHeaderGroups()}>
+            {headerGroup => (
+              <tr class="tw:sticky">
+                <For each={headerGroup.headers}>
+                  {header => (
+                    <th colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : (
+                        <div
+                          class={
+                            header.column.getCanSort()
+                              ? 'tw:cursor-pointer tw:select-none'
+                              : undefined
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {{
+                            asc: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width={1.5} stroke="currentColor" class="tw:inline tw:size-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                            </svg>
+                            ,
+                            desc: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width={1.5} stroke="currentColor" class="tw:inline tw:size-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                            ,
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  )}
+                </For>
+              </tr>
+            )}
+          </For>
+        </thead>
+        <tbody>
+          <For each={table.getRowModel().rows}>
+            {row => (
+              <tr>
+                <For each={row.getVisibleCells()}>
+                  {cell => (
+                    <td>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  )}
+                </For>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </div>
   </div>;
 };
 
-export default Main;
+export default PaymentsTable;
