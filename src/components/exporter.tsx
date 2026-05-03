@@ -1,5 +1,5 @@
 import { Index, Show, batch, createEffect, createSignal, on, onMount, untrack } from "solid-js";
-// import { saveAs } from 'file-saver';
+import { unsafeWindow } from '$';
 
 declare global {
   interface Window {
@@ -146,15 +146,15 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
       });
     });
 
-    const name = "Earnings - Stock Other";
-    if (otherStock > 0 && !ignored[name]) {
-      if (columnMap[mapping[name]] === undefined) {
-        missing[name] = true;
-      } else {
-        row[columnMap[mapping[name]]] = otherStock;
-        found[name] = true;
-      }
-    }
+    // const name = "Earnings - Stock Other";
+    // if (otherStock > 0 && !ignored[name]) {
+    //   if (columnMap[mapping[name]] === undefined) {
+    //     missing[name] = true;
+    //   } else {
+    //     row[columnMap[mapping[name]]] = otherStock;
+    //     found[name] = true;
+    //   }
+    // }
 
     results.push(row);
   }
@@ -241,7 +241,7 @@ export const Exporter = (props: { store: any, setStore: any, overviewData: any, 
         let now = Date.now();
         let name = `pay_statements.zip`;
 
-        let client = await window.getAppShell().getHttpClient();
+        let client = await unsafeWindow.getAppShell().getHttpClient();
         let resp = await client.get(
           `/gvservice/${props.devKey()}/payroll/payStatements/?id=${refs.join("&id=")}&celPay=`,
           { responseType: "blob" }
@@ -261,7 +261,7 @@ export const Exporter = (props: { store: any, setStore: any, overviewData: any, 
         let now = Date.now();
         let name = `Payslip_${payment.date}.pdf`;
 
-        let client = await window.getAppShell().getHttpClient();
+        let client = await unsafeWindow.getAppShell().getHttpClient();
         let resp = await client.get(
           `/gvservice/${props.devKey()}/payroll/payStatement/${now}/images/${name}?pdfId=${payment.id}&celPay=&action=pdf&ref=${now}`,
           { responseType: "blob" }
@@ -404,6 +404,11 @@ export const Exporter = (props: { store: any, setStore: any, overviewData: any, 
                   props.setStore(
                     "tmpSettings", "mapping",
                     m,
+                  );
+
+                  props.setStore(
+                    "settingsTab",
+                    "tab3",
                   );
 
                   // props.settingsModal().showModal();

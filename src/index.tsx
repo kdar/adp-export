@@ -3,7 +3,7 @@ import { render } from 'solid-js/web';
 import { createSignal, onMount, createEffect, createResource } from 'solid-js';
 import { createStore, Store, SetStoreFunction } from 'solid-js/store';
 import { defaultExportMenu } from '@/components/exporter';
-import { GM_getValue, GM_setValue, GM_registerMenuCommand, GM_info } from '$';
+import { GM_getValue, GM_setValue, GM_registerMenuCommand, GM_info, unsafeWindow } from '$';
 
 import App from '@/App';
 import '@/index.css';
@@ -38,6 +38,10 @@ function upgradeState(storageKey: string, state: any): any {
     }
   }
 
+  if (!state.tempSettings) {
+    state.tempSettings = {};
+  }
+
   if (state.tmpSettings.exportMenu?.length === 0) {
     state.tmpSettings.exportMenu = [...defaultExportMenu];
   }
@@ -45,20 +49,53 @@ function upgradeState(storageKey: string, state: any): any {
   return state;
 }
 
-const isObject = (item: any) => item?.constructor === Object;
+// function isObject(v: any) {
+//   return typeof v === 'object' &&
+//     v !== null &&
+//     Object.prototype.toString.call(v) === '[object Object]';
+// }
+
+// function merge(target: any, source: any) {
+//   if (isObject(source)) {
+//     Object.keys(source).forEach(key => {
+//       const targetValue = target[key];
+//       const sourceValue = source[key];
+//       if ((!isObject(targetValue) && targetValue !== undefined) && sourceValue) {
+//         const newValues = merge(targetValue, sourceValue);
+//         console.log(sourceValue, newValues);
+//         Object.assign(sourceValue, newValues);
+//       }
+//     });
+//     console.log(target, source);
+//     Object.assign(target ?? {}, source);
+//   }
+
+//   return target;
+// }
 
 function merge(target: any, source: any) {
-  Object.keys(source).forEach(key => {
-    const targetValue = target[key];
-    const sourceValue = source[key];
-    if ((!isObject(targetValue) && targetValue !== undefined) && sourceValue) {
-      const newValues = merge(targetValue, sourceValue);
-      Object.assign(sourceValue, newValues);
-    }
-  });
+  // Handle cases where target or source are not objects or are null
+  if (typeof target !== 'object' || target === null || typeof source !== 'object' || source === null) {
+    return source; // If not objects or one is null, return the source directly
+  }
 
-  Object.assign(target ?? {}, source);
-  return target;
+  // Create a new object for the result to avoid modifying the original target
+  const result = { ...target };
+
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key]) &&
+        typeof result[key] === 'object' && result[key] !== null && !Array.isArray(result[key])) {
+        // If both properties are non-null, non-array objects, recursively merge them
+        result[key] = merge(result[key], source[key]);
+      } else {
+        // Otherwise, assign the source property to the result (overwriting if exists)
+        result[key] = source[key];
+      }
+    }
+  }
+
+  return result;
 }
 
 function createGMStore<T extends object>(
@@ -70,6 +107,7 @@ function createGMStore<T extends object>(
     try {
       let saved = JSON.parse(GM_getValue(key));
       saved = upgradeState(key, saved);
+      // console.log(initState, saved);
       setState(merge({ ...initState }, saved));
     } catch (error) {
       console.error(error);
@@ -85,13 +123,13 @@ function createGMStore<T extends object>(
 }
 
 async function fetchDevKey() {
-  let client = await window.getAppShell().getHttpClient();
+  let client = await unsafeWindow.getAppShell().getHttpClient();
   let resp = await client.get("/mcp-micro/microapi-theme/microapi/v1/associates/userDevKey");
   return resp.data.devKey;
 }
 
 async function fetchOverviewData(devKey: string) {
-  let client = await window.getAppShell().getHttpClient();
+  let client = await unsafeWindow.getAppShell().getHttpClient();
   const overviewData = await client.get(`/gvservice/${devKey}/ess/pay/overview`);
 
   const j = {
@@ -110,7 +148,7 @@ async function fetchOverviewData(devKey: string) {
 
 function ready(fn: any) {
   let id = setInterval(() => {
-    if (window.getAppShell) {
+    if (unsafeWindow.getAppShell) {
       clearInterval(id);
       fn();
     }
@@ -125,6 +163,7 @@ async function main() {
   let [settingsModal, setSettingsModal] = createSignal<HTMLDialogElement | null>(null);
   const [store, setStore] = createGMStore('adp-export', {}, {
     version: latestStateVersion,
+    settingsTab: "tab1",
     tmpSettings: {
       mapping: [],
       exportMenu: [...defaultExportMenu]

@@ -452,11 +452,10 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
   let importTextArea: any;
   const store = props.store;
   const [importError, setImportError] = createSignal<string | null>(null);
-  const [selectedTab, setSelectedTab] = createSignal<string>('tab1');
   const [selectedData, setSelectedData] = createSignal([]);
 
   const handleTabChange: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
-    setSelectedTab(event.currentTarget.value);
+    props.setStore("settingsTab", event.currentTarget.value);
   };
 
   const save = () => {
@@ -644,7 +643,7 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
               class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
               aria-label="Export"
               value="tab1"
-              checked={selectedTab() === 'tab1'}
+              checked={props.store.settingsTab === 'tab1'}
               onInput={handleTabChange}
             />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
@@ -660,7 +659,7 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
               class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
               aria-label="Menu"
               value="tab2"
-              checked={selectedTab() === 'tab2'}
+              checked={props.store.settingsTab === 'tab2'}
               onInput={handleTabChange}
             />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
@@ -708,7 +707,7 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
               class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
               aria-label="Column Mapping"
               value="tab3"
-              checked={selectedTab() === 'tab3'}
+              checked={props.store.settingsTab === 'tab3'}
               onInput={handleTabChange}
             />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
@@ -756,7 +755,7 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
               class="tw:focus-visible:outline-hidden tw:border-0 tw:tab tw:whitespace-nowrap"
               aria-label="Column Import/Export"
               value="tab4"
-              checked={selectedTab() === 'tab4'}
+              checked={props.store.settingsTab === 'tab4'}
               onInput={handleTabChange}
             />
             <div role="tabpanel" class="tw:tab-content tw:pt-2">
@@ -797,10 +796,10 @@ const App = (props: { settingsModalRef: any, store: any, setStore: any, overview
           <div class="tw:modal-action tw:mt-1">
             <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-center tw:gap-2" role="group">
               <Switch fallback={<div>Error. Can't figure out which tab is selected.</div>}>
-                <Match when={selectedTab() === "tab1"}>
+                <Match when={props.store.settingsTab === "tab1"}>
                   <Exporter store={props.store} setStore={props.setStore} overviewData={props.overviewData} selectedData={selectedData} devKey={props.devKey}></Exporter>
                 </Match>
-                <Match when={selectedTab() !== "tab1"}>
+                <Match when={props.store.settingsTab !== "tab1"}>
                   <button class="tw:btn tw:btn-primary" disabled={JSON.stringify(store.tmpSettings) === JSON.stringify(store.settings)} onClick={(e) => {
                     save();
                   }}>Save</button>
