@@ -27,7 +27,7 @@ export default defineConfig({
         supportURL: 'https://github.com/kdar/adp-export/issues',
         description: 'Exports ADP paystub data in JSON and CSV',
         author: 'Kevin Darlington',
-        version: '0.0.7',
+        version: '0.0.9',
         grant: ['GM_getValue', 'GM_setValue', 'GM_info', 'GM_registerMenuCommand'],
       },
     }),
