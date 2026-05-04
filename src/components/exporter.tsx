@@ -88,6 +88,9 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
   let missing: any = {};
   let found: any = {};
 
+  // Track which keys map to the same column name for conflict detection.
+  let columnToKeys: Record<string, string[]> = {};
+
   mappingCfg.forEach((v: any) => {
     if (!v.enabled) {
       ignored[v.key] = true;
@@ -95,7 +98,13 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
     }
 
     mapping[v.key] = v.column;
-    columns.push(v.column);
+
+    // Track which keys map to each column.
+    if (!columnToKeys[v.column]) {
+      columnToKeys[v.column] = [];
+      columns.push(v.column);
+    }
+    columnToKeys[v.column].push(v.key);
   });
 
   for (const [index, x] of columns.entries()) {
@@ -118,7 +127,17 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
         return;
       }
 
-      row[columnMap[mapping[name]]] = value;
+      const colIndex = columnMap[mapping[name]];
+      const existingValue = row[colIndex];
+      if (existingValue !== undefined && existingValue !== 0 && value !== undefined && value !== 0) {
+        // Check if this is a conflict with another key mapping to the same column.
+        const keysForColumn = columnToKeys[mapping[name]] || [];
+        const otherKeys = keysForColumn.filter((k: string) => k !== name && found[k]);
+        if (otherKeys.length > 0) {
+          throw new Error(`Multiple mappings resolve to column "${mapping[name]}": "${name}" and "${otherKeys[0]}" both have values`);
+        }
+      }
+      row[colIndex] = value;
       found[name] = true;
     });
 
@@ -141,7 +160,17 @@ function jsonToCsv(data: any, mappingCfg: any): { csv: string[][], found: string
           return;
         }
 
-        row[columnMap[mapping[name]]] = wagetype.amount;
+        const colIndex = columnMap[mapping[name]];
+        const existingValue = row[colIndex];
+        if (existingValue !== undefined && existingValue !== 0 && wagetype.amount !== undefined && wagetype.amount !== 0) {
+          // Check if this is a conflict with another key mapping to the same column.
+          const keysForColumn = columnToKeys[mapping[name]] || [];
+          const otherKeys = keysForColumn.filter((k: string) => k !== name && found[k]);
+          if (otherKeys.length > 0) {
+            throw new Error(`Multiple mappings resolve to column "${mapping[name]}": "${name}" and "${otherKeys[0]}" both have values`);
+          }
+        }
+        row[colIndex] = wagetype.amount;
         found[name] = true;
       });
     });
@@ -462,7 +491,7 @@ export const Exporter = (props: { store: any, setStore: any, overviewData: any, 
               }
 
               let selectedMap: any = props.selectedData();
-              payData.payments = payData.payments.filter((v: { id: string }) => selectedMap[v.id]);
+              payData = { ...payData, payments: payData.payments.filter((v: { id: string }) => selectedMap[v.id]) };
 
               batch(() => {
                 entry().execute.forEach(async (v: string) => {
